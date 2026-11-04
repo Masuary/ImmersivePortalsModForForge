@@ -18,8 +18,7 @@ allprojects {
     apply plugin: 'org.spongepowered.mixin'
     apply plugin: 'maven-publish'
 
-    sourceCompatibility = 17
-    targetCompatibility = 17
+    java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
     version = project.mod_version //'0.16-mc1.16.5-forge'
 
@@ -34,18 +33,14 @@ allprojects {
             url "https://maven.tterrag.com/"
         }
         maven {
-            url "https://cursemaven.com"
-            content {
-                includeGroup "curse.maven"
-            }
+            // CurseMaven: any CurseForge file as curse.maven:<slug>-<projectId>:<fileId>.
+            name = 'CurseMaven'
+            url = 'https://cursemaven.com'
+            content { includeGroup 'curse.maven' }
         }
         maven {
             name "theillusivec4"
             url = "https://maven.theillusivec4.top/"
-        }
-        //maven{url="https://minecraft.curseforge.com/api/maven/"}
-        maven {
-            url = "https://jitpack.io"
         }
         maven {
             url = "https://modmaven.dev/"
@@ -54,53 +49,60 @@ allprojects {
             name "Modding Legacy Maven"
             url "https://maven.moddinglegacy.com/artifactory/modding-legacy/"
         }
-
-
-        flatDir {
-            dirs rootProject.file('libs')
-        }
-
     }
+
+    // cursemaven-helper:start
+    // Mod dependencies come from CurseForge through CurseMaven (or another public Maven), so anyone can build this mod.
+    // To build against a local jar while developing, pass its path: -Ppehkui_jar=path/to/pehkui.jar
+    // (or set it in ~/.gradle/gradle.properties). Never commit an override.
+    def modDep = { String property, String coordinate ->
+        def local = findProperty(property)
+        if (local) {
+            def localJar = rootProject.file(local)
+            if (!localJar.isFile()) throw new GradleException("-P${property}=${local} does not exist")
+            return files(localJar)
+        }
+        return fg.deobf(coordinate)
+    }
+    // cursemaven-helper:end
 
     dependencies {
         minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.loader_version}"
         annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
         // Pehkui
-        api fg.deobf("com.github.Virtuoel:Pehkui:${project.pehkui_version}")
+        api modDep('pehkui_jar', "curse.maven:pehkui-319596:${project.pehkui_fileid}")
         // Twilight Forest
-        //api fg.deobf("teamtwilight:twilightforest:${project.twilightforest_version}:universal")
-        api fg.deobf("curse.maven:twilightforest-227639:${project.twilightforest_fileid}")
+        api modDep('twilightforest_jar', "curse.maven:twilightforest-227639:${project.twilightforest_fileid}")
         // Flywheel
-        api fg.deobf("com.jozufozu.flywheel:flywheel-forge-1.18.2:${project.flywheel_version}")
+        api modDep('flywheel_jar', "com.jozufozu.flywheel:flywheel-forge-1.18.2:${project.flywheel_version}")
         // Rubidium
-        api fg.deobf("curse.maven:rubidium-574856:${project.rubidium_fileid}")
+        api modDep('rubidium_jar', "curse.maven:rubidium-574856:${project.rubidium_fileid}")
         // Oculus
-        api fg.deobf("curse.maven:oculus-581495:${project.oculus_fileid}")
+        api modDep('oculus_jar', "curse.maven:oculus-581495:${project.oculus_fileid}")
         // Curios
-        runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${project.curios_version}")
-        compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${project.curios_version}:api")
+        runtimeOnly modDep('curios_jar', "top.theillusivec4.curios:curios-forge:${project.curios_version}")
+        compileOnly modDep('curios_api_jar', "top.theillusivec4.curios:curios-forge:${project.curios_version}:api")
         // Tinkers Construct
-        api fg.deobf("curse.maven:tconstruct-74072:${project.tconstruct_fileid}")
-        api fg.deobf("curse.maven:mantle-74924:${project.mantle_fileid}")
+        api modDep('tconstruct_jar', "curse.maven:tconstruct-74072:${project.tconstruct_fileid}")
+        api modDep('mantle_jar', "curse.maven:mantle-74924:${project.mantle_fileid}")
         // Serene Seasons (Disabled: Incompatible unless compat render mode)
-        // api fg.deobf("curse.maven:sereneseasons-291874:${project.sereneseasons_fileid}")
+        // api modDep('sereneseasons_jar', "curse.maven:sereneseasons-291874:${project.sereneseasons_fileid}")
         // Mekanism
-        api fg.deobf("curse.maven:mekanism-268560:${project.mekanism_fileid}")
+        api modDep('mekanism_jar', "curse.maven:mekanism-268560:${project.mekanism_fileid}")
         // Immersive Engineering
-        api fg.deobf("curse.maven:immersiveengineering-231951:${project.immersiveengineering_fileid}")
+        api modDep('immersiveengineering_jar', "curse.maven:immersiveengineering-231951:${project.immersiveengineering_fileid}")
         // Lucent
-        api fg.deobf("com.legacy:lucent:${project.lucent_version}")
+        api modDep('lucent_jar', "com.legacy:lucent:${project.lucent_version}")
         // Music Triggers
-        api fg.deobf("curse.maven:musictriggers-518410:${project.musictrigger_fileid}")
-        api fg.deobf("curse.maven:impossiblelib-661115:${project.impossiblelib_fileid}")
+        api modDep('musictriggers_jar', "curse.maven:musictriggers-518410:${project.musictrigger_fileid}")
+        api modDep('impossiblelib_jar', "curse.maven:impossiblelib-661115:${project.impossiblelib_fileid}")
         // Vampirism
-        api fg.deobf("curse.maven:vampirism-233029:${project.vampirism_fileid}")
-        api fg.deobf("curse.maven:guide-api-village-and-pillage-380771:3677523")
-        // Agicraft
-        //implementation fg.deobf("curse.maven:agricraft-225635:4595095")
-        implementation fg.deobf('flat.dev.agricraft:agricraft-1.18.2:3.1.6')
-        implementation fg.deobf("curse.maven:infinitylib-251396:3883932")
+        api modDep('vampirism_jar', "curse.maven:vampirism-233029:${project.vampirism_fileid}")
+        api modDep('guideapi_jar', "curse.maven:guide-api-village-and-pillage-380771:${project.guideapi_fileid}")
+        // AgriCraft
+        implementation modDep('agricraft_jar', "curse.maven:agricraft-225635:${project.agricraft_fileid}")
+        implementation modDep('infinitylib_jar', "curse.maven:infinitylib-251396:${project.infinitylib_fileid}")
 
         compileOnly 'com.demonwav.mcdev:annotations:1.0'
     }
