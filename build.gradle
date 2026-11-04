@@ -155,6 +155,11 @@ minecraft {
 dependencies {
     compileOnly project(":imm_ptl_core")
     compileOnly project(":q_misc_util")
+
+    testImplementation "org.junit.jupiter:junit-jupiter:${project.junit_version}"
+}
+test {
+    useJUnitPlatform()
 }
 compileJava {
     source(project(":imm_ptl_core").sourceSets.main.allSource)

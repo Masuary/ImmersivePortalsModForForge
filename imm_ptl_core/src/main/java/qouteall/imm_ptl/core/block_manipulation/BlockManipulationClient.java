@@ -26,6 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.commands.PortalCommand;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.Portal;
 
@@ -62,7 +63,8 @@ public class BlockManipulationClient {
         
         Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
         
-        float reachDistance = client.gameMode.getPickRange();
+        float pickRange = client.gameMode.getPickRange();
+        float reachDistance = VaultRules.isVaultHuntersPresent() ? (float) VaultRules.capRemoteReach(pickRange) : pickRange;
         
         PortalCommand.getPlayerPointingPortalRaw(
             client.player, tickDelta, reachDistance, true
@@ -71,6 +73,12 @@ public class BlockManipulationClient {
                 double distanceToPortalPointing = pair.getSecond().distanceTo(cameraPos);
                 if (distanceToPortalPointing < getCurrentTargetDistance() + 0.2) {
                     client.hitResult = createMissedHitResult(cameraPos, pair.getSecond());
+                    
+                    if (VaultRules.involvesVaultHuntersDimension(
+                        client.player.level.dimension().location(), pair.getFirst().dimensionTo.location()
+                    )) {
+                        return;
+                    }
                     
                     updateTargetedBlockThroughPortal(
                         cameraPos,

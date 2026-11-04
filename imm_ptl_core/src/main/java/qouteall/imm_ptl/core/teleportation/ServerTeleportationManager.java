@@ -55,6 +55,8 @@ public class ServerTeleportationManager {
     private WeakHashMap<Entity, Long> lastTeleportGameTime = new WeakHashMap<>();
     private final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Long>> rejectedTravel = new WeakHashMap<>();
     public boolean isFiringMyChangeDimensionEvent = false;
+    // true while an EntityTravelToDimensionEvent for a portal crossing is posted, to tell it from a vanilla change
+    public boolean isFiringMyTravelEvent = false;
     public final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Vec3>> lastPosition =
         new WeakHashMap<>();
     
@@ -142,8 +144,6 @@ public class ServerTeleportationManager {
         Vec3 oldEyePos,
         UUID portalId
     ) {
-        recordLastPosition(player);
-        
         Portal portal = findPortal(dimensionBefore, portalId);
         
         lastTeleportGameTime.put(player, McHelper.getServerGameTime());
@@ -154,6 +154,8 @@ public class ServerTeleportationManager {
                 rejectTravel(player, portal.dimensionTo);
                 return;
             }
+            
+            recordLastPosition(player);
             
             if (isTeleporting(player)) {
                 Helper.log(player.toString() + "is teleporting frequently");
@@ -209,8 +211,17 @@ public class ServerTeleportationManager {
     }
     
     // fires EntityTravelToDimensionEvent like a vanilla dimension change, so other mods can react or veto
-    private static boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo) {
-        return entity.level.dimension() == dimensionTo || ForgeHooks.onTravelToDimension(entity, dimensionTo);
+    private boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo) {
+        if (entity.level.dimension() == dimensionTo) {
+            return true;
+        }
+        isFiringMyTravelEvent = true;
+        try {
+            return ForgeHooks.onTravelToDimension(entity, dimensionTo);
+        }
+        finally {
+            isFiringMyTravelEvent = false;
+        }
     }
     
     public void recordLastPosition(ServerPlayer player) {

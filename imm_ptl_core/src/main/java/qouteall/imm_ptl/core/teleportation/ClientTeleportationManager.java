@@ -20,6 +20,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.ducks.*;
 import qouteall.imm_ptl.core.network.PacketRedirectionClient;
 import qouteall.imm_ptl.core.platform_specific.O_O;
@@ -138,7 +139,9 @@ public class ClientTeleportationManager {
         
         Tuple<Portal, Vec3> pair = CHelper.getClientNearbyPortals(32)
             .flatMap(portal -> {
-                if (portal.canTeleportEntity(player)) {
+                if (portal.canTeleportEntity(player) && !VaultRules.involvesVaultHuntersDimension(
+                    player.level.dimension().location(), portal.dimensionTo.location()
+                )) {
                     Vec3 collidingPoint = portal.rayTrace(
                         moveStartPoint,
                         newHeadPos

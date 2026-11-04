@@ -20,28 +20,31 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.network.PacketRedirection;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
-import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
+import qouteall.q_misc_util.my_util.LimitedLogger;
 
 import java.util.List;
 
 public class BlockManipulationServer {
+    private static final LimitedLogger rejectionLogger = new LimitedLogger(100);
     
     public static void processBreakBlock(
         ResourceKey<Level> dimension,
         ServerboundPlayerActionPacket packet,
         ServerPlayer player
     ) {
+        // checked before shouldFinishMining, which already attacks the block
+        if (!canPlayerReach(dimension, player, packet.getPos(), VaultRules.BREAK_REACH_PADDING)) {
+            rejectionLogger.log("Rejected cross portal block breaking packet " + player);
+            sendBreakAck(dimension, packet, player, "out of reach");
+            return;
+        }
         if (shouldFinishMining(dimension, packet, player)) {
-            if (canPlayerReach(dimension, player, packet.getPos())) {
-                doDestroyBlock(dimension, packet, player);
-            }
-            else {
-                Helper.log("Rejected cross portal block breaking packet " + player);
-            }
+            doDestroyBlock(dimension, packet, player);
         }
     }
     
@@ -63,16 +66,35 @@ public class BlockManipulationServer {
         }
     }
     
+    private static void sendBreakAck(
+        ResourceKey<Level> dimension,
+        ServerboundPlayerActionPacket packet,
+        ServerPlayer player,
+        String reason
+    ) {
+        ServerLevel destWorld = MiscHelper.getServer().getLevel(dimension);
+        ClientboundBlockBreakAckPacket ackPacket = new ClientboundBlockBreakAckPacket(
+            packet.getPos(), destWorld.getBlockState(packet.getPos()), packet.getAction(), false, reason);
+        player.connection.send(PacketRedirection.createRedirectedMessage(dimension, ackPacket));
+    }
+    
     private static boolean canPlayerReach(
         ResourceKey<Level> dimension,
         ServerPlayer player,
-        BlockPos requestPos
+        BlockPos requestPos,
+        double vaultReachPadding
     ) {
+        if (VaultRules.involvesVaultHuntersDimension(player.level.dimension().location(), dimension.location())) {
+            return false;
+        }
+        
         Float playerScale = PehkuiInterface.invoker.computeBlockReachScale(player);
         
         Vec3 pos = Vec3.atCenterOf(requestPos);
-        Vec3 playerPos = player.position();
-        double distanceSquare = 6 * 6 * 4 * 4 * playerScale * playerScale;
+        boolean isReachCapped = VaultRules.isVaultHuntersPresent();
+        Vec3 playerPos = isReachCapped ? player.getEyePosition() : player.position();
+        double reach = isReachCapped ? VaultRules.capRemoteReach(player.getReachDistance()) + vaultReachPadding : 6 * 4;
+        double distanceSquare = reach * reach * playerScale * playerScale;
         if (player.level.dimension() == dimension) {
             if (playerPos.distanceToSqr(pos) < distanceSquare) {
                 return true;
@@ -107,9 +129,7 @@ public class BlockManipulationServer {
             player.gameMode.setLevel(oldWorld);
         }
         else {
-            ClientboundBlockBreakAckPacket ackPacket = new ClientboundBlockBreakAckPacket(
-                blockPos, destWorld.getBlockState(blockPos), packet.getAction(), false, "may not interact");
-            player.connection.send(PacketRedirection.createRedirectedMessage(dimension, ackPacket));
+            sendBreakAck(dimension, packet, player, "may not interact");
         }
     }
     
@@ -196,12 +216,12 @@ public class BlockManipulationServer {
         BlockPos blockPos = blockHitResult.getBlockPos();
         Direction direction = blockHitResult.getDirection();
         player.resetLastActionTime();
-        if (targetWorld.mayInteract(player, blockPos)) {
-            if (!canPlayerReach(dimension, player, blockPos)) {
-                Helper.log("Reject cross portal block placing packet " + player);
-                return;
-            }
-            
+        if (!canPlayerReach(dimension, player, blockPos, VaultRules.USE_REACH_PADDING)) {
+            rejectionLogger.log("Reject cross portal block placing packet " + player);
+            // the client already predicted the use, e.g. took the placed item out of the stack
+            player.containerMenu.sendAllDataToRemote();
+        }
+        else if (targetWorld.mayInteract(player, blockPos)) {
             Level oldWorld = player.level;
             
             player.level = targetWorld;

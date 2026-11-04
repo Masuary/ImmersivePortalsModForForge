@@ -17,6 +17,8 @@ import qouteall.imm_ptl.core.IPModMain;
 import qouteall.imm_ptl.core.commands.PortalCommand;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.IPModCompatibilityWarning;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultHuntersCompat;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.CustomPortalGenManagement;
 import qouteall.q_misc_util.Helper;
@@ -71,6 +73,11 @@ public class IPModEntry {
         }
         else {
             Helper.log("Gravity Changer is not present");
+        }
+        
+        if (VaultRules.isVaultHuntersPresent()) {
+            VaultHuntersCompat.init();
+            Helper.log("Vault Hunters is present");
         }
         
     }
