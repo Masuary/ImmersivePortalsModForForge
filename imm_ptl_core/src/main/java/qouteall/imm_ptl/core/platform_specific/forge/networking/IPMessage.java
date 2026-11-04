@@ -12,6 +12,8 @@ public class IPMessage {
     public static SimpleChannel INSTANCE;
 
     // Every packet needs a unique ID (unique for this channel)
+    // Dim_Confirm carries a forced flag since vh3r1
+    private static final String PROTOCOL_VERSION = "1.0-vh3r1";
     private static int packetId = 0;
     private static int id() {
         return packetId++;
@@ -21,9 +23,9 @@ public class IPMessage {
         // Make the channel. If needed you can do version checking here
         INSTANCE = NetworkRegistry.ChannelBuilder
                 .named(new ResourceLocation(IPModEntry.MODID, "messages"))
-                .networkProtocolVersion(() -> "1.0")
-                .clientAcceptedVersions(s -> true)
-                .serverAcceptedVersions(s -> true)
+                .networkProtocolVersion(() -> PROTOCOL_VERSION)
+                .clientAcceptedVersions(PROTOCOL_VERSION::equals)
+                .serverAcceptedVersions(PROTOCOL_VERSION::equals)
                 .simpleChannel();
 
 

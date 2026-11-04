@@ -44,6 +44,10 @@ public class IPCompatMixinPlugin implements IMixinConfigPlugin {
             return flywheelLoaded;
         }
 
+        if (mixinClassName.contains("Vault")) {
+            return LoadingModList.get().getModFileById("the_vault") != null;
+        }
+
         if (mixinClassName.contains("Lucent")) {
             boolean lucentLoaded = LoadingModList.get().getModFileById("lucent") != null;
             return lucentLoaded;

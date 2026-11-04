@@ -222,6 +222,10 @@ public class NewChunkTrackingGraph {
         PlayerInfo playerInfo
     ) {
         ResourceKey<Level> chunkLoaderDim = chunkLoader.center.dimension;
+        // a player who died in a level that another mod has already removed still stands in it until respawn
+        if (MiscHelper.getServer().getLevel(chunkLoaderDim) == null) {
+            return;
+        }
         playerInfo.visibleDimensions.add(chunkLoaderDim);
         
         Long2ObjectLinkedOpenHashMap<ArrayList<PlayerWatchRecord>> chunkRecordMap =

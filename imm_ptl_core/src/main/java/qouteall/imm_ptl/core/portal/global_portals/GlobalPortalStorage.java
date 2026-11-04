@@ -7,6 +7,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -29,6 +30,7 @@ import qouteall.imm_ptl.core.platform_specific.forge.networking.GlobalPortalUpda
 import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.q_misc_util.Helper;
+import qouteall.q_misc_util.MiscGlobals;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.forge.events.ServerDimensionDynamicUpdateEvent;
 
@@ -62,7 +64,9 @@ public class GlobalPortalStorage extends SavedData {
         });
         
         IPGlobal.serverCleanupSignal.connect(() -> {
-            for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
+            // Forge clears its current server before runServer returns, when this signal is emitted
+            MinecraftServer server = MiscGlobals.refMinecraftServer.get();
+            for (ServerLevel world : server.getAllLevels()) {
                 get(world).onServerClose();
             }
         });

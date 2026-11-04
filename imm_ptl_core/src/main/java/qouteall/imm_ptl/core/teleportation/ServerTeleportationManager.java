@@ -18,6 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import org.apache.commons.lang3.Validate;
@@ -52,6 +53,7 @@ import java.util.stream.Stream;
 public class ServerTeleportationManager {
     private Set<ServerPlayer> teleportingEntities = new HashSet<>();
     private WeakHashMap<Entity, Long> lastTeleportGameTime = new WeakHashMap<>();
+    private final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Long>> rejectedTravel = new WeakHashMap<>();
     public boolean isFiringMyChangeDimensionEvent = false;
     public final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Vec3>> lastPosition =
         new WeakHashMap<>();
@@ -148,6 +150,11 @@ public class ServerTeleportationManager {
         
         Vec3 oldFeetPos = oldEyePos.subtract(McHelper.getEyeOffset(player));
         if (canPlayerTeleport(player, dimensionBefore, oldFeetPos, portal)) {
+            if (!isDimensionTravelAllowed(player, portal.dimensionTo)) {
+                rejectTravel(player, portal.dimensionTo);
+                return;
+            }
+            
             if (isTeleporting(player)) {
                 Helper.log(player.toString() + "is teleporting frequently");
             }
@@ -199,6 +206,11 @@ public class ServerTeleportationManager {
             return ((Portal) portalEntity);
         }
         return null;
+    }
+    
+    // fires EntityTravelToDimensionEvent like a vanilla dimension change, so other mods can react or veto
+    private static boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo) {
+        return entity.level.dimension() == dimensionTo || ForgeHooks.onTravelToDimension(entity, dimensionTo);
     }
     
     public void recordLastPosition(ServerPlayer player) {
@@ -392,6 +404,19 @@ public class ServerTeleportationManager {
         ##################################################################################################*/
     }
     
+    // the client has already crossed the portal on its side, so its position packets are for the other dimension
+    private void rejectTravel(ServerPlayer player, ResourceKey<Level> dimensionTo) {
+        rejectedTravel.put(player, new Tuple<>(dimensionTo, McHelper.getServerGameTime()));
+        IPMessage.sendToPlayer(new Dim_Confirm(player.level.dimension(), player.position(), true), player);
+    }
+    
+    // move packets the client sent for the rejected dimension before it received the correction
+    private boolean isTravelRecentlyRejected(ServerPlayer player, ResourceKey<Level> dimension) {
+        Tuple<ResourceKey<Level>, Long> rejection = rejectedTravel.get(player);
+        return rejection != null && rejection.getA() == dimension
+            && McHelper.getServerGameTime() - rejection.getB() < 40;
+    }
+    
     public static void sendPositionConfirmMessage(ServerPlayer player) {
         IPMessage.sendToPlayer(new Dim_Confirm(player.level.dimension(), player.position()), player);
     }
@@ -468,6 +493,10 @@ public class ServerTeleportationManager {
         this.lastTeleportGameTime.put(entity, currGameTime);
         
         if (entity.isPassenger() || doesEntityClusterContainPlayer(entity)) {
+            return;
+        }
+        
+        if (!isDimensionTravelAllowed(entity, portal.dimensionTo)) {
             return;
         }
         
@@ -618,11 +647,18 @@ public class ServerTeleportationManager {
         if (player.level.dimension() == dimension) {
             return;
         }
+        if (isTravelRecentlyRejected(player, dimension)) {
+            return;
+        }
         double x = packet.getX(player.getX());
         double y = packet.getY(player.getY());
         double z = packet.getZ(player.getZ());
         Vec3 newPos = new Vec3(x, y, z);
         if (canPlayerReachPos(player, dimension, newPos)) {
+            if (!isDimensionTravelAllowed(player, dimension)) {
+                rejectTravel(player, dimension);
+                return;
+            }
             recordLastPosition(player);
             invokeTpmeCommand(player, dimension, newPos);
             limitedLogger.log(String.format("accepted dubious move packet %s %s %s %s %s %s %s",

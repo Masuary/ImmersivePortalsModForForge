@@ -41,6 +41,9 @@ import java.util.List;
 public class DynamicDimensionsImpl {
     public static final SignalArged<ResourceKey<Level>> beforeRemovingDimensionSignal = new SignalArged<>();
     
+    // a level that another mod removed from the server and then unloaded (the level is no longer in the server)
+    public static final SignalArged<ServerLevel> externalDimensionRemovedSignal = new SignalArged<>();
+    
     public static boolean isRemovingDimension = false;
     
     public static void init() {

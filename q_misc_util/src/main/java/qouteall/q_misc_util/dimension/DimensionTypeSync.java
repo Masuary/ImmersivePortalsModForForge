@@ -1,12 +1,15 @@
 package qouteall.q_misc_util.dimension;
 
-import com.google.common.collect.Streams;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraftforge.api.distmarker.Dist;
@@ -16,12 +19,14 @@ import qouteall.q_misc_util.MiscHelper;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DimensionTypeSync {
 
     @OnlyIn(Dist.CLIENT)
     public static Map<ResourceKey<Level>, ResourceKey<DimensionType>> clientTypeMap;
+
+    private static Map<ResourceKey<Level>, DimensionType> clientInlineTypeMap = new HashMap<>();
 
     @OnlyIn(Dist.CLIENT)
     private static RegistryAccess currentDimensionTypeTracker;
@@ -32,67 +37,81 @@ public class DimensionTypeSync {
     }
 
     @OnlyIn(Dist.CLIENT)
-    private static Map<ResourceKey<Level>, ResourceKey<DimensionType>> typeMapFromTag(CompoundTag tag) {
-        Map<ResourceKey<Level>, ResourceKey<DimensionType>> result = new HashMap<>();
+    public static void acceptTypeMapData(CompoundTag tag) {
+        Map<ResourceKey<Level>, ResourceKey<DimensionType>> registeredTypes = new HashMap<>();
+        Map<ResourceKey<Level>, DimensionType> inlineTypes = new HashMap<>();
         tag.getAllKeys().forEach(key -> {
             ResourceKey<Level> worldKey = DimId.idToKey(key);
-            
-            String val = tag.getString(key);
-            
-            ResourceKey<DimensionType> typeKey =
-                ResourceKey.create(Registry.DIMENSION_TYPE_REGISTRY, new ResourceLocation(val));
-            
-            result.put(worldKey, typeKey);
+            Tag typeTag = tag.get(key);
+            if (typeTag instanceof CompoundTag inlineTypeTag) {
+                inlineTypes.put(worldKey, decodeInlineType(worldKey, inlineTypeTag));
+            }
+            else {
+                registeredTypes.put(worldKey, idToDimType(new ResourceLocation(typeTag.getAsString())));
+            }
         });
-        
-        return result;
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static void acceptTypeMapData(CompoundTag tag) {
-        clientTypeMap = typeMapFromTag(tag);
+        clientTypeMap = registeredTypes;
+        clientInlineTypeMap = inlineTypes;
         
         Helper.log("Received Dimension Type Sync");
-        Helper.log("\n" + Helper.myToString(
-            clientTypeMap.entrySet().stream().map(
+        Helper.log("\n" + Helper.myToString(Stream.concat(
+            registeredTypes.entrySet().stream().map(
                 e -> e.getKey().location().toString() + " -> " + e.getValue().location()
+            ),
+            inlineTypes.keySet().stream().map(
+                worldKey -> worldKey.location().toString() + " -> (unregistered type, synced by value)"
             )
-        ));
+        )));
+    }
+    
+    @OnlyIn(Dist.CLIENT)
+    private static DimensionType decodeInlineType(ResourceKey<Level> worldKey, CompoundTag inlineTypeTag) {
+        return DimensionType.DIRECT_CODEC.parse(NbtOps.INSTANCE, inlineTypeTag).getOrThrow(
+            false,
+            error -> Helper.err("Cannot decode the dimension type of " + worldKey.location() + ": " + error)
+        );
     }
     
     public static CompoundTag createTagFromServerWorldInfo() {
-        RegistryAccess registryManager = MiscHelper.getServer().registryAccess();
-        Registry<DimensionType> dimensionTypes = registryManager.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
-        return typeMapToTag(
-            Streams.stream(MiscHelper.getServer().getAllLevels()).collect(
-                Collectors.toMap(
-                    Level::dimension,
-                    w -> {
-                        DimensionType dimensionType = w.dimensionType();
-                        ResourceLocation id = dimensionTypes.getKey(dimensionType);
-                        if (id == null) {
-                            Helper.err("Missing dim type id for " + w.dimension());
-                            Helper.err("Registered dimension types " +
-                                Helper.myToString(dimensionTypes.keySet().stream()));
-                            return DimensionType.OVERWORLD_LOCATION;
-                        }
-                        return idToDimType(id);
-                    }
-                )
-            )
+        Registry<DimensionType> dimensionTypes =
+            MiscHelper.getServer().registryAccess().registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
+        CompoundTag tag = new CompoundTag();
+        for (ServerLevel world : MiscHelper.getServer().getAllLevels()) {
+            tag.put(world.dimension().location().toString(), createTypeTag(world, dimensionTypes));
+        }
+        return tag;
+    }
+    
+    // Mods like Vault Hunters create levels with an unregistered Holder.direct dimension type,
+    // which the client cannot look up by id, so those types are sent by value.
+    private static Tag createTypeTag(ServerLevel world, Registry<DimensionType> dimensionTypes) {
+        Holder<DimensionType> typeHolder = world.dimensionTypeRegistration();
+        ResourceLocation id = typeHolder.unwrapKey()
+            .map(ResourceKey::location)
+            .orElseGet(() -> dimensionTypes.getKey(typeHolder.value()));
+        if (id != null) {
+            return StringTag.valueOf(id.toString());
+        }
+        return DimensionType.DIRECT_CODEC.encodeStart(NbtOps.INSTANCE, typeHolder.value()).getOrThrow(
+            false,
+            error -> Helper.err("Cannot encode the dimension type of " + world.dimension().location() + ": " + error)
         );
     }
     
     public static ResourceKey<DimensionType> idToDimType(ResourceLocation id) {
         return ResourceKey.create(Registry.DIMENSION_TYPE_REGISTRY, id);
     }
-    
-    private static CompoundTag typeMapToTag(Map<ResourceKey<Level>, ResourceKey<DimensionType>> data) {
-        CompoundTag tag = new CompoundTag();
-        data.forEach((worldKey, typeKey) -> {
-            tag.put(worldKey.location().toString(), StringTag.valueOf(typeKey.location().toString()));
-        });
-        return tag;
+
+    @OnlyIn(Dist.CLIENT)
+    public static Holder<DimensionType> getDimensionTypeHolder(
+        ResourceKey<Level> worldKey, RegistryAccess registryAccess
+    ) {
+        DimensionType inlineType = clientInlineTypeMap.get(worldKey);
+        if (inlineType != null) {
+            return Holder.direct(inlineType);
+        }
+        return registryAccess.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY)
+            .getHolderOrThrow(getDimensionTypeKey(worldKey));
     }
 
     @OnlyIn(Dist.CLIENT)

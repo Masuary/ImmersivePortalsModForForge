@@ -19,7 +19,9 @@
     "MixinSodiumChunkShaderInterface",
     "MixinSodiumRenderSectionManager",
     "MixinSodiumShaderLoader",
-    "MixinSodiumWorldRenderer"
+    "MixinSodiumWorldRenderer",
+    "MixinVaultBatchBlockPlacer",
+    "MixinVaultVirtualWorlds"
   ],
   "client": [
     "MixinLucent",

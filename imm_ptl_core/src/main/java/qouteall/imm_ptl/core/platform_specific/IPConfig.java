@@ -7,6 +7,7 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.q_misc_util.Helper;
+import qouteall.q_misc_util.dimension.DimensionMisc;
 
 public class IPConfig {
 
@@ -46,6 +47,7 @@ public class IPConfig {
     public static ForgeConfigSpec.EnumValue<IPGlobal.EndPortalMode> endPortalMode;
     public static ForgeConfigSpec.BooleanValue enableModelDataFix;
     public static ForgeConfigSpec.BooleanValue editGlobalDimensionStack;
+    public static ForgeConfigSpec.BooleanValue restoreMissingVanillaDimensions;
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
@@ -85,6 +87,9 @@ public class IPConfig {
         netherPortalMode = builder.defineEnum("netherPortalMode", IPGlobal.NetherPortalMode.normal, IPGlobal.NetherPortalMode.values());
         endPortalMode = builder.defineEnum("endPortalMode", IPGlobal.EndPortalMode.normal, IPGlobal.EndPortalMode.values());
         editGlobalDimensionStack = builder.define("enableGlobalDimensionStack", false);
+        restoreMissingVanillaDimensions = builder
+            .comment("Recreate the Nether and the End when the world has none (repairs worlds that lost them to DFU)")
+            .define("restoreMissingVanillaDimensions", false);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, builder.build());
     }
@@ -145,6 +150,7 @@ public class IPConfig {
         }
 
         IPGlobal.editGlobalDimensionStack = editGlobalDimensionStack.get();
+        DimensionMisc.restoreMissingVanillaDimensions = restoreMissingVanillaDimensions.get();
 
         Helper.log("IP Config Applied");
     }

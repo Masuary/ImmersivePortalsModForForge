@@ -121,5 +121,6 @@ public class MyLoadingTicket {
     
     public static void init() {
         DynamicDimensionsImpl.beforeRemovingDimensionSignal.connect(MyLoadingTicket::onDimensionRemove);
+        DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(loadedChunkRecord::remove);
     }
 }

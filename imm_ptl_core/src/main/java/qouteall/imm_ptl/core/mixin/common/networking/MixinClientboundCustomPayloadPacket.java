@@ -12,9 +12,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import qouteall.imm_ptl.core.ducks.IECustomPayloadPacket;
 import qouteall.imm_ptl.core.network.PacketRedirection;
@@ -31,14 +29,6 @@ public class MixinClientboundCustomPayloadPacket implements IECustomPayloadPacke
     @Final
     private FriendlyByteBuf data;
     
-    @ModifyConstant(
-        method = "<init>(Lnet/minecraft/network/FriendlyByteBuf;)V",
-        constant = @Constant(intValue = 1048576)
-    )
-    private int modifySizeLimitWhenReadingPacket(int oldValue) {
-        return 233333333;
-    }
-    
     private ResourceKey<Level> ip_redirectedDimension;
     private Packet<ClientGamePacketListener> ip_redirectedPacket;
     
@@ -50,14 +40,20 @@ public class MixinClientboundCustomPayloadPacket implements IECustomPayloadPacke
         FriendlyByteBuf _buf, CallbackInfo ci
     ) {
         if (PacketRedirection.isPacketIdOfRedirection(identifier)) {
-            ResourceKey<Level> dimension = DimId.readWorldId(data, true);
-            
-            int packetId = data.readInt();
-            Packet packet = PacketRedirection.createPacketById(packetId, data);
-            
-            ip_redirectedDimension = dimension;
-            ip_redirectedPacket = (Packet<ClientGamePacketListener>) packet;
+            ip_decodeRedirectedPacket();
         }
+    }
+
+    // Mods that replace this packet's decoder (Connectivity) build it through the other constructor
+    // and set the data afterwards, so the redirected packet is decoded when it is handled instead.
+    private void ip_decodeRedirectedPacket() {
+        ResourceKey<Level> dimension = DimId.readWorldId(data, true);
+
+        int packetId = data.readInt();
+        Packet packet = PacketRedirection.createPacketById(packetId, data);
+
+        ip_redirectedDimension = dimension;
+        ip_redirectedPacket = (Packet<ClientGamePacketListener>) packet;
     }
     
     @Inject(
@@ -92,6 +88,9 @@ public class MixinClientboundCustomPayloadPacket implements IECustomPayloadPacke
     )
     private void onHandle(ClientGamePacketListener handler, CallbackInfo ci) {
         if (PacketRedirection.isPacketIdOfRedirection(identifier)) {
+            if (ip_redirectedPacket == null) {
+                ip_decodeRedirectedPacket();
+            }
             PacketRedirection.do_handleRedirectedPacketFromNetworkingThread(
                 ip_redirectedDimension, ip_redirectedPacket, handler
             );

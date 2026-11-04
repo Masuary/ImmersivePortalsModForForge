@@ -104,6 +104,9 @@ allprojects {
         implementation modDep('agricraft_jar', "curse.maven:agricraft-225635:${project.agricraft_fileid}")
         implementation modDep('infinitylib_jar', "curse.maven:infinitylib-251396:${project.infinitylib_fileid}")
 
+        // Vault Hunters (compat mixins only, not shipped or run in dev)
+        compileOnly modDep('the_vault_jar', "curse.maven:vault-hunters-official-mod-458203:${project.the_vault_fileid}")
+
         compileOnly 'com.demonwav.mcdev:annotations:1.0'
     }
 
@@ -153,7 +156,7 @@ dependencies {
     compileOnly project(":imm_ptl_core")
     compileOnly project(":q_misc_util")
 }
-tasks.withType(JavaCompile) {
+compileJava {
     source(project(":imm_ptl_core").sourceSets.main.allSource)
     source(project(":q_misc_util").sourceSets.main.allSource)
 }

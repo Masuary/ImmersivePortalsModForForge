@@ -22,6 +22,7 @@ import java.util.Set;
 
 public class DimensionMisc {
     public static final Set<ResourceLocation> nonPersistentDimensions = new HashSet<>();
+    public static boolean restoreMissingVanillaDimensions = false;
     private static final Logger logger = LogManager.getLogger();
     
     // fix the issue that nether and end get swallowed by DFU
@@ -80,6 +81,9 @@ public class DimensionMisc {
 
     @SubscribeEvent
     public static void onServerDimensionsLoad(ServerDimensionsLoadEvent event) {
+        if (!restoreMissingVanillaDimensions) {
+            return;
+        }
         addMissingVanillaDimensions(event.generatorOptions, event.registryManager);
     }
     

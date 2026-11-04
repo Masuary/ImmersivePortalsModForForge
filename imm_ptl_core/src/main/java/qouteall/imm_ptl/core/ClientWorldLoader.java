@@ -6,7 +6,6 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -47,6 +46,9 @@ public class ClientWorldLoader {
     
     private static final Minecraft client = Minecraft.getInstance();
     
+    // removed by the server while the player was still in them (death in a removed dimension)
+    private static final Set<ResourceKey<Level>> pendingDimensionRemovals = new HashSet<>();
+    
     private static boolean isInitialized = false;
     
     private static boolean isCreatingClientWorld = false;
@@ -76,14 +78,26 @@ public class ClientWorldLoader {
 
     @SubscribeEvent
     public static void clientDimensionUpdate(ClientDimensionUpdateEvent event) {
-        if (getIsInitialized()) { // TODO Find out why this is false @Nick1st
-            List<ResourceKey<Level>> dimensionsToRemove = clientWorldMap.keySet().stream()
-                    .filter(dim -> !event.dimIdSet.contains(dim)).toList();
-
-            for (ResourceKey<Level> dim : dimensionsToRemove) {
-                disposeDimensionDynamically(dim);
-            }
+        if (getIsInitialized() && client.level != null && client.player != null) { // TODO Find out why this is false @Nick1st
+            pendingDimensionRemovals.removeIf(event.dimIdSet::contains);
+            clientWorldMap.keySet().stream()
+                .filter(dim -> !event.dimIdSet.contains(dim))
+                .forEach(pendingDimensionRemovals::add);
+            disposeRemovedDimensionsNotInUse();
         }
+    }
+    
+    private static void disposeRemovedDimensionsNotInUse() {
+        pendingDimensionRemovals.removeIf(dimension -> {
+            if (!clientWorldMap.containsKey(dimension)) {
+                return true;
+            }
+            if (client.level.dimension() == dimension || client.player.level.dimension() == dimension) {
+                return false;
+            }
+            disposeDimensionDynamically(dimension);
+            return true;
+        });
     }
     
     public static boolean getIsInitialized() {
@@ -95,6 +109,10 @@ public class ClientWorldLoader {
     }
     
     private static void tick() {
+        if (!pendingDimensionRemovals.isEmpty() && client.level != null && client.player != null) {
+            disposeRemovedDimensionsNotInUse();
+        }
+        
         if (IPCGlobal.isClientRemoteTickingEnabled) {
             isClientRemoteTicking = true;
             clientWorldMap.values().forEach(world -> {
@@ -200,6 +218,7 @@ public class ClientWorldLoader {
         
         clientWorldMap.clear();
         worldRendererMap.clear();
+        pendingDimensionRemovals.clear();
         
         disposeRenderHelpers();
         
@@ -304,6 +323,10 @@ public class ClientWorldLoader {
             return getWorld(dimension);
         }
         
+        if (pendingDimensionRemovals.contains(dimension)) {
+            return clientWorldMap.get(dimension);
+        }
+        
         return null;
     }
     
@@ -365,16 +388,13 @@ public class ClientWorldLoader {
         try {
             ClientPacketListener mainNetHandler = client.player.connection;
             
-            ResourceKey<DimensionType> dimensionTypeKey =
-                DimensionTypeSync.getDimensionTypeKey(dimension);
             ClientLevel.ClientLevelData currentProperty =
                 (ClientLevel.ClientLevelData) ((IEWorld) client.level).myGetProperties();
             RegistryAccess registryManager = mainNetHandler.registryAccess();
             int simulationDistance = client.level.getServerSimulationDistance();
             
-            Holder<DimensionType> dimensionType = registryManager
-                .registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY)
-                .getHolderOrThrow(dimensionTypeKey);
+            Holder<DimensionType> dimensionType =
+                DimensionTypeSync.getDimensionTypeHolder(dimension, registryManager);
             
             ClientLevel.ClientLevelData properties = new ClientLevel.ClientLevelData(
                 currentProperty.getDifficulty(),

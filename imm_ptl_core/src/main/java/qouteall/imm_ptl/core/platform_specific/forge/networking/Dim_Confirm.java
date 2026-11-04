@@ -14,15 +14,22 @@ import java.util.function.Supplier;
 public class Dim_Confirm {
     private ResourceKey<Level> dimensionType;
     private Vec3 pos;
+    private boolean forceAccept;
 
     public Dim_Confirm(ResourceKey<Level> dimensionType, Vec3 pos) {
+        this(dimensionType, pos, false);
+    }
+
+    public Dim_Confirm(ResourceKey<Level> dimensionType, Vec3 pos, boolean forceAccept) {
         this.dimensionType = dimensionType;
         this.pos = pos;
+        this.forceAccept = forceAccept;
     }
 
     public Dim_Confirm(FriendlyByteBuf buf) {
         dimensionType = DimId.readWorldId(buf, true);
         pos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+        forceAccept = buf.readBoolean();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -30,11 +37,12 @@ public class Dim_Confirm {
         buf.writeDouble(pos.x);
         buf.writeDouble(pos.y);
         buf.writeDouble(pos.z);
+        buf.writeBoolean(forceAccept);
     }
 
     public boolean handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context ctx = supplier.get();
-        ctx.enqueueWork(() -> MiscHelper.executeOnRenderThread(() -> IPCGlobal.clientTeleportationManager.acceptSynchronizationDataFromServer(dimensionType, pos, false)));
+        ctx.enqueueWork(() -> MiscHelper.executeOnRenderThread(() -> IPCGlobal.clientTeleportationManager.acceptSynchronizationDataFromServer(dimensionType, pos, forceAccept)));
         ctx.setPacketHandled(true);
         return true;
     }

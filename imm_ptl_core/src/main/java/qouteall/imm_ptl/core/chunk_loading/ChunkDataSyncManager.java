@@ -5,6 +5,7 @@ import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.*;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import qouteall.imm_ptl.core.McHelper;
@@ -14,6 +15,7 @@ import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.dimension.DynamicDimensionsImpl;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 public class ChunkDataSyncManager {
@@ -32,6 +34,9 @@ public class ChunkDataSyncManager {
         
         DynamicDimensionsImpl.beforeRemovingDimensionSignal.connectWithWeakRef(
             this, ChunkDataSyncManager::onDimensionRemove
+        );
+        DynamicDimensionsImpl.externalDimensionRemovedSignal.connectWithWeakRef(
+            this, ChunkDataSyncManager::onLevelRemove
         );
     }
     
@@ -74,6 +79,28 @@ public class ChunkDataSyncManager {
             }
         }
         //if the chunk is not present then the packet will be sent when chunk is ready
+    }
+    
+    // for mods that change a chunk without block updates and resend it only to the players in that level
+    public void resendChunkToRemoteWatchers(ServerLevel world, ChunkPos chunkPos) {
+        ResourceKey<Level> dimension = world.dimension();
+        IEThreadedAnvilChunkStorage ieStorage = (IEThreadedAnvilChunkStorage) world.getChunkSource().chunkMap;
+        List<ServerPlayer> remoteWatchers = NewChunkTrackingGraph.getPlayersViewingChunk(dimension, chunkPos.x, chunkPos.z)
+            .filter(player -> player.level != world)
+            .toList();
+        ChunkHolder chunkHolder = ieStorage.ip_getChunkHolder(chunkPos.toLong());
+        LevelChunk chunk = chunkHolder == null ? null : chunkHolder.getTickingChunk();
+        if (remoteWatchers.isEmpty() || chunk == null) {
+            return;
+        }
+        Packet chunkDataPacketRedirected = PacketRedirection.createRedirectedMessage(
+            dimension,
+            new ClientboundLevelChunkWithLightPacket(chunk, ieStorage.ip_getLightingProvider(), null, null, true)
+        );
+        for (ServerPlayer player : remoteWatchers) {
+            player.connection.send(chunkDataPacketRedirected);
+            ieStorage.ip_updateEntityTrackersAfterSendingChunkPacket(chunk, player);
+        }
     }
     
     /**
@@ -141,7 +168,11 @@ public class ChunkDataSyncManager {
     }
     
     public void onDimensionRemove(ResourceKey<Level> dimension) {
-        ServerLevel world = McHelper.getServerWorld(dimension);
+        onLevelRemove(McHelper.getServerWorld(dimension));
+    }
+    
+    private void onLevelRemove(ServerLevel world) {
+        ResourceKey<Level> dimension = world.dimension();
         
         ServerChunkCache chunkManager = world.getChunkSource();
         IEThreadedAnvilChunkStorage storage =
