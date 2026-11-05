@@ -28,6 +28,7 @@ import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortal;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.ducks.IEServerPlayNetworkHandler;
 import qouteall.imm_ptl.core.ducks.IEServerPlayerEntity;
@@ -57,6 +58,9 @@ public class ServerTeleportationManager {
     public boolean isFiringMyChangeDimensionEvent = false;
     // true while an EntityTravelToDimensionEvent for a portal crossing is posted, to tell it from a vanilla change
     public boolean isFiringMyTravelEvent = false;
+    // the portal being crossed while that event is posted, null for crossings without one (dubious moves)
+    @Nullable
+    private Portal portalOfMyTravelEvent;
     public final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Vec3>> lastPosition =
         new WeakHashMap<>();
     
@@ -150,7 +154,11 @@ public class ServerTeleportationManager {
         
         Vec3 oldFeetPos = oldEyePos.subtract(McHelper.getEyeOffset(player));
         if (canPlayerTeleport(player, dimensionBefore, oldFeetPos, portal)) {
-            if (!isDimensionTravelAllowed(player, portal.dimensionTo)) {
+            if (!isDimensionTravelAllowed(player, portal.dimensionTo, portal)) {
+                rejectTravel(player, portal.dimensionTo);
+                return;
+            }
+            if (portal instanceof VaultPortal vaultPortal && !vaultPortal.admitCrossingOnServer(player, oldEyePos)) {
                 rejectTravel(player, portal.dimensionTo);
                 return;
             }
@@ -211,17 +219,24 @@ public class ServerTeleportationManager {
     }
     
     // fires EntityTravelToDimensionEvent like a vanilla dimension change, so other mods can react or veto
-    private boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo) {
+    private boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo, @Nullable Portal portal) {
         if (entity.level.dimension() == dimensionTo) {
             return true;
         }
         isFiringMyTravelEvent = true;
+        portalOfMyTravelEvent = portal;
         try {
             return ForgeHooks.onTravelToDimension(entity, dimensionTo);
         }
         finally {
             isFiringMyTravelEvent = false;
+            portalOfMyTravelEvent = null;
         }
+    }
+    
+    @Nullable
+    public Portal getPortalOfMyTravelEvent() {
+        return portalOfMyTravelEvent;
     }
     
     public void recordLastPosition(ServerPlayer player) {
@@ -237,12 +252,12 @@ public class ServerTeleportationManager {
         Vec3 posBefore,
         Entity portalEntity
     ) {
-        if (player.getVehicle() != null) {
-            return true;
-        }
-        
         if (!(portalEntity instanceof Portal portal)) {
             return false;
+        }
+        
+        if (player.getVehicle() != null) {
+            return true;
         }
         
         return portal.canTeleportEntity(player)
@@ -507,7 +522,7 @@ public class ServerTeleportationManager {
             return;
         }
         
-        if (!isDimensionTravelAllowed(entity, portal.dimensionTo)) {
+        if (!isDimensionTravelAllowed(entity, portal.dimensionTo, portal)) {
             return;
         }
         
@@ -666,7 +681,7 @@ public class ServerTeleportationManager {
         double z = packet.getZ(player.getZ());
         Vec3 newPos = new Vec3(x, y, z);
         if (canPlayerReachPos(player, dimension, newPos)) {
-            if (!isDimensionTravelAllowed(player, dimension)) {
+            if (!isDimensionTravelAllowed(player, dimension, null)) {
                 rejectTravel(player, dimension);
                 return;
             }

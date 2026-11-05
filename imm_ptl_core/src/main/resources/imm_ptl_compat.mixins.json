@@ -5,6 +5,7 @@
   "plugin": "qouteall.imm_ptl.core.compat.IPCompatMixinPlugin",
   "mixins": [
     "IESodiumWorldRenderer",
+    "IEVaultListenersLogic",
     "IEVaultServerVaults",
     "MixinFlywheelCrumblingRenderer",
     "MixinFlywheelProgramCompiler",
@@ -22,6 +23,8 @@
     "MixinSodiumShaderLoader",
     "MixinSodiumWorldRenderer",
     "MixinVaultBatchBlockPlacer",
+    "MixinVaultEntityState",
+    "MixinVaultPortalBlock",
     "MixinVaultSpiritEntity",
     "MixinVaultVirtualWorlds"
   ],

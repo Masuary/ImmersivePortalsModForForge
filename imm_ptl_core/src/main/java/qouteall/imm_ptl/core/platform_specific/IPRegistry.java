@@ -13,6 +13,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortal;
 import qouteall.imm_ptl.core.portal.*;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalTrackedPortal;
 import qouteall.imm_ptl.core.portal.global_portals.VerticalConnectingPortal;
@@ -113,6 +114,14 @@ public class IPRegistry {
                             .fireImmune()
                             .clientTrackingRange(96)
                             .build(IPModEntry.MODID + "general_breakable_portal"));
+
+    public static final RegistryObject<EntityType<VaultPortal>> VAULT_PORTAL =
+            ENTITY_TYPES.register("vault_portal",
+                    () -> EntityType.Builder.of(VaultPortal::new, MobCategory.MISC)
+                            .sized(1.0f, 1.0f)
+                            .fireImmune()
+                            .clientTrackingRange(96)
+                            .build(IPModEntry.MODID + "vault_portal"));
 
     public static final RegistryObject<EntityType<LoadingIndicatorEntity>> LOADING_INDICATOR =
             ENTITY_TYPES.register("loading_indicator",

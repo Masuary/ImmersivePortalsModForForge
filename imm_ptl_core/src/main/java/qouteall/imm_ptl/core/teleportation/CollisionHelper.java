@@ -161,6 +161,10 @@ public class CollisionHelper {
         }
         
         Level destinationWorld = collidingPortal.getDestWorld();
+        if (destinationWorld == null) {
+            // the destination level was removed (e.g. a closed vault) before the portal was
+            return attemptedMove;
+        }
         
         if (!destinationWorld.hasChunkAt(new BlockPos(boxOtherSide.getCenter()))) {
             if (entity instanceof Player && entity.level.isClientSide()) {

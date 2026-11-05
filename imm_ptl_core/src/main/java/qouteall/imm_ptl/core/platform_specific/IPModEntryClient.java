@@ -37,7 +37,8 @@ public class IPModEntryClient {
                 IPRegistry.GLOBAL_TRACKED_PORTAL.get(),
                 IPRegistry.BORDER_PORTAL.get(),
                 IPRegistry.END_FLOOR_PORTAL.get(),
-                IPRegistry.GENERAL_BREAKABLE_PORTAL.get()
+                IPRegistry.GENERAL_BREAKABLE_PORTAL.get(),
+                IPRegistry.VAULT_PORTAL.get()
         }).peek(
             Validate::notNull
         ).forEach(

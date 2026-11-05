@@ -122,7 +122,8 @@ public abstract class MixinEntity implements IEEntity {
             CollisionHelper.updateCollidingPortalNow(entity);
         }
         
-        if (collidingPortal == null ||
+        // a portal removed while the entity was not ticked (e.g. its destination level was removed) has no other side
+        if (collidingPortal == null || collidingPortal.isRemoved() ||
 //            entity.hasPassengers() ||
 //            entity.hasVehicle() ||
             !IPGlobal.crossPortalCollision
@@ -216,7 +217,7 @@ public abstract class MixinEntity implements IEEntity {
                 
                 Level destinationWorld = collidingPortal.getDestinationWorld();
                 
-                if (destinationWorld.hasChunkAt(remoteLandingPos)) {
+                if (destinationWorld != null && destinationWorld.hasChunkAt(remoteLandingPos)) {
                     BlockState result = destinationWorld.getBlockState(remoteLandingPos);
                     
                     if (!result.isAir()) {
@@ -238,7 +239,7 @@ public abstract class MixinEntity implements IEEntity {
         Entity this_ = (Entity) (Object) this;
         
         if (collidingPortal != null) {
-            if (collidingPortal.level != level) {
+            if (collidingPortal.isRemoved() || collidingPortal.level != level) {
                 collidingPortal = null;
             }
             else {

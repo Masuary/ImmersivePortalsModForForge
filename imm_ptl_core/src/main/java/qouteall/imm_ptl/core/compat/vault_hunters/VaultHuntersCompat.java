@@ -28,7 +28,8 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * Vault Hunters rules that need its classes: vault levels are entered and left only through Vault Hunters (V1),
+ * Vault Hunters rules that need its classes: vault levels are entered and left only through Vault Hunters (V1, vault
+ * portals run Vault Hunters' own portal logic, see {@link VaultPortalLinks}),
  * and players without a right to be in a vault level (not a runner, spectator or operator) are sent out of it the
  * way Vault Hunters does it for orphaned vault levels and spectators (V5). Only initialised when the_vault is loaded.
  */
@@ -44,6 +45,7 @@ public final class VaultHuntersCompat {
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, VaultHuntersCompat::onTravelToDimension);
         MinecraftForge.EVENT_BUS.addListener(VaultHuntersCompat::onPlayerTick);
         DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(VaultHuntersCompat::onLevelRemoved);
+        VaultPortalLinks.init();
     }
 
     public static boolean isNonListenerInVault(ServerPlayer player) {
@@ -62,6 +64,10 @@ public final class VaultHuntersCompat {
             return;
         }
         Entity entity = event.getEntity();
+        // a vault portal's crossing is decided right after this event by Vault Hunters' own logic for that portal
+        if (entity instanceof ServerPlayer && IPGlobal.serverTeleportationManager.getPortalOfMyTravelEvent() instanceof VaultPortal) {
+            return;
+        }
         ResourceLocation dimensionFrom = entity.level.dimension().location();
         ResourceLocation dimensionTo = event.getDimension().location();
         if (VaultRules.involvesVaultHuntersDimension(dimensionFrom, dimensionTo)) {

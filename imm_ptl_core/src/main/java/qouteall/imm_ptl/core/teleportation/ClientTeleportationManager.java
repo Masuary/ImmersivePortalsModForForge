@@ -20,6 +20,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortal;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.ducks.*;
 import qouteall.imm_ptl.core.network.PacketRedirectionClient;
@@ -36,7 +37,9 @@ import qouteall.imm_ptl.core.render.context_management.RenderStates;
 import qouteall.imm_ptl.core.render.context_management.WorldRenderInfo;
 import qouteall.q_misc_util.Helper;
 
+import javax.annotation.Nullable;
 import java.util.Comparator;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @OnlyIn(Dist.CLIENT)
@@ -52,6 +55,17 @@ public class ClientTeleportationManager {
     public static boolean isTeleportingFrame = false;
     
     private static final int teleportLimit = 2;
+    // a server refusal arriving this soon after a crossing refused that crossing
+    private static final int refusalWindowTicks = 40;
+    // a refused portal is not predicted again for a while, so a refused player walking on does not bounce back and forth
+    private static final int refusedPortalPauseTicks = 60;
+    
+    @Nullable
+    private UUID lastCrossedPortalId = null;
+    private long lastCrossingTick = 0;
+    @Nullable
+    private UUID refusedPortalId = null;
+    private long refusedPortalPausedUntil = 0;
     
     public ClientTeleportationManager() {
         IPGlobal.postClientTickSignal.connectWithWeakRef(
@@ -85,8 +99,22 @@ public class ClientTeleportationManager {
             }
         }
         if (client.player.level.dimension() != dimension) {
+            if (forceAccept) {
+                pauseRefusedPortal();
+            }
             forceTeleportPlayer(dimension, pos);
         }
+    }
+    
+    private void pauseRefusedPortal() {
+        if (lastCrossedPortalId != null && tickTimeForTeleportation - lastCrossingTick <= refusalWindowTicks) {
+            refusedPortalId = lastCrossedPortalId;
+            refusedPortalPausedUntil = tickTimeForTeleportation + refusedPortalPauseTicks;
+        }
+    }
+    
+    private boolean isPausedAfterRefusal(Portal portal) {
+        return portal.getUUID().equals(refusedPortalId) && tickTimeForTeleportation < refusedPortalPausedUntil;
     }
     
     public void manageTeleportation(float tickDelta) {
@@ -139,8 +167,8 @@ public class ClientTeleportationManager {
         
         Tuple<Portal, Vec3> pair = CHelper.getClientNearbyPortals(32)
             .flatMap(portal -> {
-                if (portal.canTeleportEntity(player) && !VaultRules.involvesVaultHuntersDimension(
-                    player.level.dimension().location(), portal.dimensionTo.location()
+                if (portal.canTeleportEntity(player) && !isPausedAfterRefusal(portal) && VaultRules.mayPredictCrossing(
+                    player.level.dimension().location(), portal.dimensionTo.location(), portal instanceof VaultPortal
                 )) {
                     Vec3 collidingPoint = portal.rayTrace(
                         moveStartPoint,
@@ -190,6 +218,8 @@ public class ClientTeleportationManager {
         }
         
         lastTeleportGameTime = tickTimeForTeleportation;
+        lastCrossedPortalId = portal.getUUID();
+        lastCrossingTick = tickTimeForTeleportation;
         
         LocalPlayer player = client.player;
         Validate.isTrue(player != null);
