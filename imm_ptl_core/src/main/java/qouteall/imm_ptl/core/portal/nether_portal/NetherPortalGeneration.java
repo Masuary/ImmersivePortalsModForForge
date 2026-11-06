@@ -7,9 +7,11 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import qouteall.imm_ptl.core.IPGlobal;
@@ -26,6 +28,7 @@ import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.IntBox;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.*;
@@ -38,6 +41,18 @@ public class NetherPortalGeneration {
         Direction.Axis axis,
         BlockPos neededAreaSize
     ) {
+        if (axis != Direction.Axis.Y) {
+            IntBox vanillaPlacement = NetherPortalMatcher.findVanillaVerticalPortalPlacement(
+                toWorld, mappedPosInOtherDimension, axis, neededAreaSize
+            );
+            if (vanillaPlacement == null) {
+                vanillaPlacement = buildVanillaPortalLedge(toWorld, mappedPosInOtherDimension, axis, neededAreaSize);
+            }
+            if (vanillaPlacement != null) {
+                return vanillaPlacement;
+            }
+        }
+
         BlockPos randomShift = new BlockPos(
             toWorld.getRandom().nextBoolean() ? 1 : -1,
             0,
@@ -78,6 +93,50 @@ public class NetherPortalGeneration {
         return foundAirCube;
     }
     
+    /**
+     * Vanilla PortalForcer's fallback when no spot can host a frame: at the target position, its height clamped to
+     * between y 70 and the top of the dimension's logical height, an obsidian ledge under the frame and the blocks in
+     * front of and behind it, with the inner area's space above the ledge cleared. Returns the frame's bounding box, or
+     * null where vanilla would not build a portal either.
+     */
+    @Nullable
+    private static IntBox buildVanillaPortalLedge(
+        ServerLevel toWorld, BlockPos targetPos, Direction.Axis normalAxis, BlockPos frameBoxSize
+    ) {
+        Direction along = NetherPortalMatcher.getVanillaFrameDirection(normalAxis);
+        Direction across = along.getClockWise();
+        int frameWidth = Helper.getCoordinate(frameBoxSize, along.getAxis());
+        int frameHeight = frameBoxSize.getY();
+        int lowestY = Math.max(McHelper.getMinY(toWorld) + 1, 70);
+        int highestY = NetherPortalMatcher.getVanillaMaxPortalY(toWorld) - (frameHeight + 4);
+        if (highestY < lowestY) {
+            return null;
+        }
+        BlockPos innerCorner = new BlockPos(targetPos.getX(), Mth.clamp(targetPos.getY(), lowestY, highestY), targetPos.getZ());
+        if (!NetherPortalMatcher.isFrameWithinBorder(toWorld.getWorldBorder(), innerCorner, along, frameWidth)) {
+            return null;
+        }
+
+        BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
+        for (int sideOffset = -1; sideOffset < 2; sideOffset++) {
+            for (int alongOffset = 0; alongOffset < frameWidth - 2; alongOffset++) {
+                for (int upOffset = -1; upOffset < frameHeight - 2; upOffset++) {
+                    cell.setWithOffset(
+                        innerCorner,
+                        along.getStepX() * alongOffset + across.getStepX() * sideOffset,
+                        upOffset,
+                        along.getStepZ() * alongOffset + across.getStepZ() * sideOffset
+                    );
+                    toWorld.setBlockAndUpdate(
+                        cell, upOffset < 0 ? Blocks.OBSIDIAN.defaultBlockState() : Blocks.AIR.defaultBlockState()
+                    );
+                }
+            }
+        }
+        Helper.log("No spot for a new portal frame near " + targetPos + ", built an obsidian ledge like vanilla");
+        return NetherPortalMatcher.getVanillaFrameBox(innerCorner, along, frameWidth, frameHeight);
+    }
+
     private static boolean isFloating(ServerLevel toWorld, IntBox foundAirCube) {
         return foundAirCube.getSurfaceLayer(Direction.DOWN).stream().noneMatch(
             blockPos -> toWorld.getBlockState(blockPos.below()).getMaterial().isSolid()

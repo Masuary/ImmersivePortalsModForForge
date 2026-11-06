@@ -6,6 +6,7 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -16,6 +17,8 @@ import qouteall.imm_ptl.core.compat.IPModCompatibilityWarning;
 import qouteall.imm_ptl.core.compat.iris_compatibility.ExperimentalIrisPortalRenderer;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumInterface;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultWindowRendering;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.render.*;
 import qouteall.imm_ptl.core.teleportation.ClientTeleportationManager;
@@ -56,6 +59,10 @@ public class IPModEntryClient {
     public static void onInitializeClient() {
         FMLJavaModLoadingContext.get().getModEventBus().register(IPModMainClient.class);
         FMLJavaModLoadingContext.get().getModEventBus().register(IPModEntryClient.class);
+        if (VaultRules.isVaultHuntersPresent()) {
+            MinecraftForge.EVENT_BUS.addListener(VaultWindowRendering::onRenderLevelStage);
+            MinecraftForge.EVENT_BUS.addListener(VaultWindowRendering::onHighlightBlock);
+        }
         
         boolean isSodiumPresent =
                 ModList.get().isLoaded("rubidium");

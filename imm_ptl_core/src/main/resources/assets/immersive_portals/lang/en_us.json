@@ -157,5 +157,16 @@
   "imm_ptl.sodium_warning": "[Immersive Portals] You are using Sodium with Immersive Portals. The compatibility is not perfect. Rendering issues may occur.",
   "imm_ptl.iris_warning": "[Immersive Portals] You are using Iris with Immersive Portals. The compatibility is not perfect. Rendering issues may occur.",
   "imm_ptl.disable_warning": "Disable warning",
-  "imm_ptl.warning_disabled": "Warning Disabled"
+  "imm_ptl.warning_disabled": "Warning Disabled",
+  "entity.imm_ptl_core.portal": "Portal",
+  "entity.imm_ptl_core.nether_portal_new": "Nether Portal",
+  "entity.imm_ptl_core.end_portal": "End Portal",
+  "entity.imm_ptl_core.mirror": "Mirror",
+  "entity.imm_ptl_core.breakable_mirror": "Breakable Mirror",
+  "entity.imm_ptl_core.global_tracked_portal": "Global Portal",
+  "entity.imm_ptl_core.border_portal": "World Border Portal",
+  "entity.imm_ptl_core.end_floor_portal": "End Floor Portal",
+  "entity.imm_ptl_core.general_breakable_portal": "Portal",
+  "entity.imm_ptl_core.loading_indicator": "Portal Loading Indicator",
+  "entity.imm_ptl_core.vault_portal": "Vault Portal"
 }

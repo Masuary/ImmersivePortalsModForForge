@@ -26,6 +26,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
+import qouteall.imm_ptl.core.chunk_loading.WorldInfoSender;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.PehkuiInterface;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortal;
@@ -417,6 +418,11 @@ public class ServerTeleportationManager {
         
         //update advancements
         ((IEServerPlayerEntity) player).portal_worldChanged(fromWorld);
+
+        // a vanilla dimension change sends the new level's time and weather (PlayerList.sendLevelInfo); without it the
+        // client keeps the time its copy of that level had while it was only seen through portals, which can be far
+        // behind (Vault Hunters' backpack HUD compares game times and kept showing "Missing Backpack" in vaults)
+        WorldInfoSender.sendWorldInfo(player, toWorld);
 
         /*##################################################################################################
         ##                                         Forge specific start                                   ##

@@ -5,10 +5,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.levelgen.Heightmap;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.IntBox;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -120,6 +123,113 @@ public class NetherPortalMatcher {
         );
     }
     
+    /**
+     * Where vanilla's PortalForcer would build a new frame of this size around {@code searchingCenter}: the closest spot
+     * within 16 blocks whose bottom frame row is solid ground with air above it, preferring spots with the same room in
+     * front of and behind the frame. Returns the frame's bounding box, or null when there is no such spot.
+     */
+    @Nullable
+    static IntBox findVanillaVerticalPortalPlacement(
+        LevelAccessor world, BlockPos searchingCenter, Direction.Axis normalAxis, BlockPos frameBoxSize
+    ) {
+        Direction along = getVanillaFrameDirection(normalAxis);
+        int frameWidth = Helper.getCoordinate(frameBoxSize, along.getAxis());
+        int frameHeight = frameBoxSize.getY();
+        int minY = McHelper.getMinY(world);
+        int maxY = getVanillaMaxPortalY(world);
+        WorldBorder border = world.getWorldBorder();
+        BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
+        double bestDistance = -1;
+        BlockPos best = null;
+        double withoutSideRoomDistance = -1;
+        BlockPos withoutSideRoom = null;
+
+        for (BlockPos column : BlockPos.spiralAround(searchingCenter, 16, Direction.EAST, Direction.SOUTH)) {
+            int x = column.getX();
+            int z = column.getZ();
+            if (!isFrameWithinBorder(border, new BlockPos(x, 0, z), along, frameWidth)) {
+                continue;
+            }
+            int topY = Math.min(maxY, world.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z));
+            for (int y = topY; y >= minY; y--) {
+                if (!world.isEmptyBlock(cell.set(x, y, z))) {
+                    continue;
+                }
+                int airTop = y;
+                while (y > minY && world.isEmptyBlock(cell.set(x, y - 1, z))) {
+                    y--;
+                }
+                int airDepth = airTop - y;
+                if (y + frameHeight - 1 > maxY || (airDepth > 0 && airDepth < 3)) {
+                    continue;
+                }
+                BlockPos corner = new BlockPos(x, y, z);
+                if (!canHostVanillaFrame(world, corner, along, frameWidth, frameHeight, 0)) {
+                    continue;
+                }
+                double distance = searchingCenter.distSqr(corner);
+                if (canHostVanillaFrame(world, corner, along, frameWidth, frameHeight, -1)
+                    && canHostVanillaFrame(world, corner, along, frameWidth, frameHeight, 1)
+                    && (bestDistance == -1 || bestDistance > distance)) {
+                    bestDistance = distance;
+                    best = corner;
+                }
+                if (bestDistance == -1 && (withoutSideRoomDistance == -1 || withoutSideRoomDistance > distance)) {
+                    withoutSideRoomDistance = distance;
+                    withoutSideRoom = corner;
+                }
+            }
+        }
+
+        BlockPos chosen = best != null ? best : withoutSideRoom;
+        return chosen == null ? null : getVanillaFrameBox(chosen, along, frameWidth, frameHeight);
+    }
+
+    // the frame's bounding box for the bottom corner of its inner area, as vanilla's PortalForcer lays it out
+    static IntBox getVanillaFrameBox(BlockPos innerCorner, Direction along, int frameWidth, int frameHeight) {
+        BlockPos frameCorner = innerCorner.relative(along, -1).below();
+        return new IntBox(frameCorner, frameCorner.relative(along, frameWidth - 1).above(frameHeight - 1));
+    }
+
+    // vanilla checks the two inner columns; a larger frame is checked at both of its ends
+    static boolean isFrameWithinBorder(WorldBorder border, BlockPos innerCorner, Direction along, int frameWidth) {
+        return border.isWithinBounds(innerCorner.relative(along, -1))
+            && border.isWithinBounds(innerCorner.relative(along, frameWidth - 2));
+    }
+
+    static Direction getVanillaFrameDirection(Direction.Axis normalAxis) {
+        return Direction.get(
+            Direction.AxisDirection.POSITIVE, normalAxis == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X
+        );
+    }
+
+    static int getVanillaMaxPortalY(LevelAccessor world) {
+        return Math.min(McHelper.getMaxYExclusive(world), McHelper.getMaxContentYExclusive(world)) - 1;
+    }
+
+    // vanilla PortalForcer.canHostFrame for any frame size: the bottom frame row is solid ground, the rest of the frame's
+    // box is air, in the frame's own plane (sideOffset 0) or one block in front of or behind it
+    private static boolean canHostVanillaFrame(
+        LevelAccessor world, BlockPos innerCorner, Direction along, int frameWidth, int frameHeight, int sideOffset
+    ) {
+        Direction across = along.getClockWise();
+        BlockPos.MutableBlockPos cell = new BlockPos.MutableBlockPos();
+        for (int alongOffset = -1; alongOffset < frameWidth - 1; alongOffset++) {
+            for (int upOffset = -1; upOffset < frameHeight - 1; upOffset++) {
+                cell.setWithOffset(
+                    innerCorner,
+                    along.getStepX() * alongOffset + across.getStepX() * sideOffset,
+                    upOffset,
+                    along.getStepZ() * alongOffset + across.getStepZ() * sideOffset
+                );
+                if (upOffset < 0 ? !isSolidGroundBlock(world.getBlockState(cell)) : !world.isEmptyBlock(cell)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     //make it possibly generate above ground
     static IntBox findHorizontalPortalPlacement(
         BlockPos areaSize,

@@ -38,7 +38,6 @@ import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.mixin.IEVaultListenersLogic;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Opening;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Placement;
-import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.WindowSize;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules.VaultPortalRole;
 import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 
@@ -343,30 +342,17 @@ public final class VaultPortalLinks {
         }
 
         Direction creatorSide = getSideOf(frameOpening, link.touchPosition());
-        WindowSize fittedEntry = VaultPortalGeometry.fitWindow(frameOpening, entranceOpening, (column, row) -> isFree(
-            world, VaultPortalGeometry.getArrivalCell(frameOpening, entranceOpening, arrival, column, row)
-        ));
         for (Direction viewerSide : new Direction[]{creatorSide, creatorSide.getOpposite()}) {
-            Placement entry = fittedEntry == null
-                ? VaultPortalGeometry.place(frameOpening, viewerSide, entranceOpening, arrival)
-                : VaultPortalGeometry.placeFitted(frameOpening, viewerSide, entranceOpening, arrival, fittedEntry);
+            Placement entry = VaultPortalGeometry.placeEntry(frameOpening, viewerSide, entranceOpening, arrival);
             McHelper.spawnServerEntity(VaultPortal.create(hub, VaultPortalRole.ENTRY, vaultId, frameBlock, entry, world.dimension()));
         }
-        WindowSize fittedExit = VaultPortalGeometry.fitWindow(entranceOpening, frameOpening, (column, row) -> isFree(
-            hub, VaultPortalGeometry.getArrivalCell(entranceOpening, frameOpening, creatorSide, column, row)
-        ));
-        Placement exit = fittedExit == null
-            ? VaultPortalGeometry.place(entranceOpening, arrival, frameOpening, creatorSide)
-            : VaultPortalGeometry.placeFitted(entranceOpening, arrival, frameOpening, creatorSide, fittedExit);
+        Placement exit = VaultPortalGeometry.placeExit(entranceOpening, arrival, frameOpening, creatorSide);
         McHelper.spawnServerEntity(VaultPortal.create(world, VaultPortalRole.EXIT, vaultId, entranceBlock, exit, hub.dimension()));
-        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {}, exit window {})",
+        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {} x {}, exit window {} x {})",
             frameOpening.min(), frameOpening.max(), hub.dimension().location(),
-            entranceOpening.min(), entranceOpening.max(), vaultId, describe(fittedEntry), describe(fittedExit));
+            entranceOpening.min(), entranceOpening.max(), vaultId,
+            (int) frameOpening.width(), (int) frameOpening.height(), (int) entranceOpening.width(), (int) entranceOpening.height());
         return LinkAttempt.LINKED;
-    }
-
-    private static String describe(@Nullable WindowSize fittedWindow) {
-        return fittedWindow == null ? "over the smaller opening" : fittedWindow.width() + " x " + fittedWindow.height();
     }
 
     private static LinkAttempt impossible(UUID vaultId, String reason) {

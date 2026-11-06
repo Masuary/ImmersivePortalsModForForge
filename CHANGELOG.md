@@ -17,9 +17,11 @@ Portals on the other side.
 - Walking through the window runs Vault Hunters' own join (party, crystal and every other check); Immersive Portals
   only does the teleport. Walking out through the start-room portal runs Vault Hunters' own exit and bail rules. A
   refused crossing leaves you standing where you were.
-- Works for every framed crystal type (classic, Personal, Paradox, PvP, Royale), including rotated start rooms. Frames
-  wider or taller than the start-room portal get a window stretched over the whole frame, and the window back to the
-  hub covers the whole start-room portal even when the hub frame is smaller.
+- Works for every framed crystal type (classic, Personal, Paradox, PvP, Royale), including rotated start rooms. Both
+  windows cover their whole opening and show the other side one to one, bottom-aligned so the floors line up: a hub
+  frame of any size shows the start room and the walls around its portal, and inside the vault the whole start-room
+  portal shows the hub frame with whatever stands in front of it (a player, the stones of an arch) at its real place.
+  Blocks seen through a window are solid, so you can only walk through where the other side is open.
 - Works for a player who enters alone: the hub frame stays loaded until its window is made.
 - Lighting a frame creates its vault at once (made by Vault Hunters itself, with the lighter as its owner), so the frame
   shows the vault before anyone enters, and the first player walks in through the window too. The vault timer still
@@ -62,6 +64,14 @@ Portals on the other side.
 
 ### Mod compatibility and other fixes
 
+- Nether portals: a new frame on the other side is placed the way vanilla places it (the closest spot within 16 blocks
+  that stands on solid ground with room in front and behind, else an obsidian ledge at a safe height) instead of inside
+  solid rock when no open space was found.
+- Portal entities have English names (Nether Portal, End Portal, Vault Portal and the others) in tooltips such as
+  Jade's.
+- Fixed: Vault Hunters' "Missing Backpack" notice stayed on screen after walking into a vault through a window (the
+  client kept an old time for the vault; a crossing now sends the new dimension's time and weather like a normal
+  dimension change).
 - Fixed: Vault Hunters' end-of-vault screen showed empty tabs (no stats, no vault map) on a client with Immersive
   Portals. Immersive Portals changed the stencil state behind Minecraft's back, which broke the clipping Vault Hunters
   uses for its scrolling panels.
