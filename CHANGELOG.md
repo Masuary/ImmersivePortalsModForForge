@@ -18,7 +18,9 @@ Portals on the other side.
   only does the teleport. Walking out through the start-room portal runs Vault Hunters' own exit and bail rules. A
   refused crossing leaves you standing where you were.
 - Works for every framed crystal type (classic, Personal, Paradox, PvP, Royale), including rotated start rooms. Frames
-  wider or taller than the start-room portal get a window stretched over the whole frame.
+  wider or taller than the start-room portal get a window stretched over the whole frame, and the window back to the
+  hub covers the whole start-room portal even when the hub frame is smaller.
+- Works for a player who enters alone: the hub frame stays loaded until its window is made.
 - The first player into a freshly lit frame still takes Vault Hunters' normal teleport (the vault does not exist before
   that). Floor (horizontal) frames keep the normal Vault Hunters portal. Completion, death, kick and timeout keep
   Vault Hunters' own teleport.
@@ -54,6 +56,9 @@ Portals on the other side.
 
 ### Mod compatibility and other fixes
 
+- Fixed: Vault Hunters' end-of-vault screen showed empty tabs (no stats, no vault map) on a client with Immersive
+  Portals. Immersive Portals changed the stencil state behind Minecraft's back, which broke the clipping Vault Hunters
+  uses for its scrolling panels.
 - Steam 'n' Rails: the conductor camera now loads and tracks chunks around the conductor.
 - Taterzens: NPCs spawn without client errors and show up; Taterzens is no longer listed as incompatible.
 - Fixed: a player sent out of a vault could land at the vault's coordinates in the hub ("Entity moves too fast" errors).

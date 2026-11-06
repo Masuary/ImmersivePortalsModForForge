@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Opening;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Placement;
-import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.RoomCellTest;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.ArrivalCellTest;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.WindowSize;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -126,42 +126,82 @@ class VaultPortalGeometryTest {
 
     @Test
     void aWideFrameGetsAWindowOverTheWholeFrameWhenTheRoomIsOpen() {
-        assertEquals(new WindowSize(5, 6), VaultPortalGeometry.fitEntryWindow(WIDE_HUB_FRAME, START_ROOM, (column, row) -> true));
+        assertEquals(new WindowSize(5, 6), VaultPortalGeometry.fitWindow(WIDE_HUB_FRAME, START_ROOM, (column, row) -> true));
     }
 
     @Test
     void theFittedWindowShrinksToTheFreeRoomButNotBelowTheSmallerOpening() {
         // free only straight in front of the 3 wide start-room portal (x 22..24), five blocks up
-        RoomCellTest corridor = (column, row) -> {
-            BlockPos cell = VaultPortalGeometry.getRoomCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, column, row);
+        ArrivalCellTest corridor = (column, row) -> {
+            BlockPos cell = VaultPortalGeometry.getArrivalCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, column, row);
             return cell.getX() >= 22 && cell.getX() <= 24 && row < 5;
         };
 
-        assertEquals(new WindowSize(3, 5), VaultPortalGeometry.fitEntryWindow(WIDE_HUB_FRAME, START_ROOM, corridor));
-        assertNull(VaultPortalGeometry.fitEntryWindow(WIDE_HUB_FRAME, START_ROOM, (column, row) -> row < 3));
+        assertEquals(new WindowSize(3, 5), VaultPortalGeometry.fitWindow(WIDE_HUB_FRAME, START_ROOM, corridor));
+        assertNull(VaultPortalGeometry.fitWindow(WIDE_HUB_FRAME, START_ROOM, (column, row) -> row < 3));
     }
 
     @Test
     void roomCellsAreTheBlocksInFrontOfTheStartRoomPortal() {
-        assertEquals(new BlockPos(21, 30, 18), VaultPortalGeometry.getRoomCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, 0, 0));
-        assertEquals(new BlockPos(25, 35, 18), VaultPortalGeometry.getRoomCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, 4, 5));
+        assertEquals(new BlockPos(21, 30, 18), VaultPortalGeometry.getArrivalCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, 0, 0));
+        assertEquals(new BlockPos(25, 35, 18), VaultPortalGeometry.getArrivalCell(WIDE_HUB_FRAME, START_ROOM, Direction.NORTH, 4, 5));
     }
 
     // a player arriving through a fitted window stands in the room, clear of the start-room wall, VH's portal and the
     // window back (whose plane is SURFACE_OFFSET in front of the portal)
     @Test
     void aFittedEntryLandsThePlayerClearOfTheStartRoomWall() {
-        Placement entry = VaultPortalGeometry.placeFittedEntry(WIDE_HUB_FRAME, Direction.SOUTH, START_ROOM, Direction.NORTH, new WindowSize(5, 6));
+        Placement entry = VaultPortalGeometry.placeFitted(WIDE_HUB_FRAME, Direction.SOUTH, START_ROOM, Direction.NORTH, new WindowSize(5, 6));
         Vec3 eyeAtOuterColumn = new Vec3(497.4, 200 + 1.62, 500.5 + VaultPortalGeometry.SURFACE_OFFSET - 0.01);
         Vec3 arrivalEye = transform(entry, eyeAtOuterColumn);
 
         assertEquals(5, entry.width(), EPSILON);
         assertEquals(6, entry.height(), EPSILON);
         assertVec(new Vec3(499.5, 203, 500.5 + VaultPortalGeometry.SURFACE_OFFSET), entry.origin());
-        assertVec(new Vec3(23.5, 33, 19.5 - VaultPortalGeometry.ROOM_ARRIVAL_OFFSET), entry.destination());
+        assertVec(new Vec3(23.5, 33, 19.5 - VaultPortalGeometry.FITTED_ARRIVAL_OFFSET), entry.destination());
         assertEquals(30 + 1.62, arrivalEye.y, EPSILON);
         assertEquals(21.4, arrivalEye.x, 1.0E-6);
         assertTrue(arrivalEye.z + 0.3 < 19, "the player's box reaches into the wall at z " + (arrivalEye.z + 0.3));
+    }
+
+    @Test
+    void theExitWindowCoversTheWholeStartRoomPortalWhenTheHubIsOpen() {
+        assertEquals(new WindowSize(3, 4), VaultPortalGeometry.fitWindow(START_ROOM, HUB_FRAME, (column, row) -> true));
+    }
+
+    @Test
+    void theExitWindowShrinksToTheFreeHubButNotBelowTheFrame() {
+        // free only straight in front of the 2 wide hub frame (x 499..500), three blocks up
+        ArrivalCellTest inFrontOfTheFrame = (column, row) -> {
+            BlockPos cell = VaultPortalGeometry.getArrivalCell(START_ROOM, HUB_FRAME, Direction.SOUTH, column, row);
+            return cell.getX() >= 499 && cell.getX() <= 500 && row < 3;
+        };
+
+        assertEquals(new WindowSize(2, 3), VaultPortalGeometry.fitWindow(START_ROOM, HUB_FRAME, inFrontOfTheFrame));
+        assertNull(VaultPortalGeometry.fitWindow(START_ROOM, HUB_FRAME, (column, row) -> row < 2));
+    }
+
+    @Test
+    void hubArrivalCellsAreTheBlocksInFrontOfTheFrame() {
+        assertEquals(new BlockPos(498, 200, 501), VaultPortalGeometry.getArrivalCell(START_ROOM, HUB_FRAME, Direction.SOUTH, 0, 0));
+        assertEquals(new BlockPos(501, 203, 501), VaultPortalGeometry.getArrivalCell(START_ROOM, HUB_FRAME, Direction.SOUTH, 3, 3));
+    }
+
+    // a player leaving through the outer column of a fitted exit window lands in front of the hub frame, clear of its
+    // blocks and of the entry window on that side
+    @Test
+    void aFittedExitLandsThePlayerClearOfTheHubFrame() {
+        Placement exit = VaultPortalGeometry.placeFitted(START_ROOM, Direction.NORTH, HUB_FRAME, Direction.SOUTH, new WindowSize(3, 4));
+        Vec3 eyeAtOuterColumn = new Vec3(22.1, 30 + 1.62, 19.5 - VaultPortalGeometry.SURFACE_OFFSET + 0.01);
+        Vec3 arrivalEye = transform(exit, eyeAtOuterColumn);
+
+        assertEquals(3, exit.width(), EPSILON);
+        assertEquals(4, exit.height(), EPSILON);
+        assertVec(new Vec3(23.5, 32, 19.5 - VaultPortalGeometry.SURFACE_OFFSET), exit.origin());
+        assertVec(new Vec3(500, 202, 500.5 + VaultPortalGeometry.FITTED_ARRIVAL_OFFSET), exit.destination());
+        assertEquals(200 + 1.62, arrivalEye.y, EPSILON);
+        assertEquals(498.6, arrivalEye.x, 1.0E-6);
+        assertTrue(arrivalEye.z - 0.3 > 501, "the player's box reaches into the frame at z " + (arrivalEye.z - 0.3));
     }
 
     private static boolean isAtWindow(Placement placement, AABB box) {

@@ -162,8 +162,8 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
     }
     
     private void myFinishRendering() {
-        GL11.glStencilFunc(GL_ALWAYS, 2333, 0xFF);
-        GL11.glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        GlStateManager._stencilFunc(GL_ALWAYS, 2333, 0xFF);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         
         GL11.glDisable(GL_STENCIL_TEST);
         GlStateManager._enableDepthTest();
@@ -266,15 +266,15 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
         int outerPortalStencilValue = PortalRendering.getPortalLayer();
         
         //is the mask here different from the mask of glStencilMask?
-        GL11.glStencilFunc(GL_EQUAL, outerPortalStencilValue, 0xFF);
+        GlStateManager._stencilFunc(GL_EQUAL, outerPortalStencilValue, 0xFF);
         
         //if stencil and depth test pass, the data in stencil buffer will increase by 1
-        GL11.glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_INCR);
         //NOTE about GL_INCR:
         //if multiple triangles occupy the same pixel and passed stencil and depth tests,
         //its stencil value will still increase by one
         
-        GL11.glStencilMask(0xFF);
+        GlStateManager._stencilMask(0xFF);
         
         // update it before pushing
         FrontClipping.updateInnerClipping(matrixStack);
@@ -326,10 +326,10 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
         //GL_LESS means ref < stencil
         
         //pass if the stencil value is greater than the maximum value
-        GL11.glStencilFunc(GL_LESS, maximumValue, 0xFF);
+        GlStateManager._stencilFunc(GL_LESS, maximumValue, 0xFF);
         
         //if stencil test passed, encode the stencil value
-        GL11.glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
+        GlStateManager._stencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
         
         //do not manipulate the depth buffer
         GL11.glDepthMask(false);
@@ -352,9 +352,9 @@ public class ExperimentalIrisPortalRenderer extends PortalRenderer {
         int thisPortalStencilValue = PortalRendering.getPortalLayer();
         
         //draw content in the mask
-        GL11.glStencilFunc(GL_EQUAL, thisPortalStencilValue, 0xFF);
+        GlStateManager._stencilFunc(GL_EQUAL, thisPortalStencilValue, 0xFF);
         
         //do not manipulate stencil buffer now
-        GL11.glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     }
 }

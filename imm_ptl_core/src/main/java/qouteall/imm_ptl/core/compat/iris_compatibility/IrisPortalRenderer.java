@@ -124,8 +124,8 @@ public class IrisPortalRenderer extends PortalRenderer {
             deferredFbs[portalLayer].fb.bindWrite(true);
             
             glEnable(GL_STENCIL_TEST);
-            glStencilFunc(GL_EQUAL, portalLayer, 0xFF);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            GlStateManager._stencilFunc(GL_EQUAL, portalLayer, 0xFF);
+            GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             
             // draw from mc fb into deferred fb within stencil
             MyRenderHelper.drawScreenFrameBuffer(mcFrameBuffer, false, true);
@@ -243,8 +243,8 @@ public class IrisPortalRenderer extends PortalRenderer {
         deferredFbs[outerLayer].fb.bindWrite(true);
         
         glEnable(GL_STENCIL_TEST);
-        glStencilFunc(GL_EQUAL, innerLayer, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        GlStateManager._stencilFunc(GL_EQUAL, innerLayer, 0xFF);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         
         MyRenderHelper.drawScreenFrameBuffer(
             deferredFbs[innerLayer].fb,
@@ -268,8 +268,8 @@ public class IrisPortalRenderer extends PortalRenderer {
         deferredFbs[portalLayer].fb.bindWrite(true);
         
         GL11.glEnable(GL_STENCIL_TEST);
-        GL11.glStencilFunc(GL11.GL_EQUAL, portalLayer, 0xFF);
-        GL11.glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+        GlStateManager._stencilFunc(GL11.GL_EQUAL, portalLayer, 0xFF);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_INCR);
         
         GlStateManager._enableDepthTest();
         

@@ -19,6 +19,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -43,6 +44,7 @@ import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -63,6 +65,12 @@ public final class VaultPortalLinks {
     private static final int RESOLVE_INTERVAL_TICKS = 20;
     // the start room is generated when the first runner arrives; a link that cannot be made by then is dropped
     private static final long PENDING_LINK_TIMEOUT_TICKS = 20L * 120;
+    // a solo runner leaves the hub with the touch, so the frame's chunk would stop ticking before the vault exists; the
+    // ticket keeps it entity-ticking (level 31) until the link is resolved, and expires on its own after the timeout
+    private static final TicketType<ChunkPos> PENDING_LINK_TICKET = TicketType.create(
+        "imm_ptl_vault_link", Comparator.comparingLong(ChunkPos::toLong), (int) PENDING_LINK_TIMEOUT_TICKS + RESOLVE_INTERVAL_TICKS * 2
+    );
+    private static final int PENDING_LINK_TICKET_DISTANCE = 2;
     // Vault Hunters frames are at most 21 x 21 blocks inside
     private static final int MAX_FRAME_BLOCKS = 21 * 21;
     private static final double LINK_SEARCH_RADIUS = 24;
@@ -155,6 +163,8 @@ public final class VaultPortalLinks {
         // the previous tick's position: a fast player can already be past the frame's plane when the touch fires
         Vec3 touchPosition = new Vec3(player.xo, player.yo, player.zo);
         pendingLinks.put(vaultId, new PendingLink(level.dimension(), pos.immutable(), touchPosition, level.getGameTime()));
+        ChunkPos frameChunk = new ChunkPos(pos);
+        level.getChunkSource().addRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
     }
 
     public static void removeIfStale(VaultPortal portal) {
@@ -257,6 +267,7 @@ public final class VaultPortalLinks {
             ServerLevel hub = server.getLevel(link.hubDimension());
             Vault vault = ServerVaults.get(vaultId).orElse(null);
             if (hub == null || vault == null) {
+                releaseFrameChunk(hub, link);
                 iterator.remove();
                 continue;
             }
@@ -266,8 +277,16 @@ public final class VaultPortalLinks {
             }
             boolean timedOut = hub.getGameTime() - link.requestedAt() > PENDING_LINK_TIMEOUT_TICKS;
             if (attempt != LinkAttempt.WAITING || timedOut) {
+                releaseFrameChunk(hub, link);
                 iterator.remove();
             }
+        }
+    }
+
+    private static void releaseFrameChunk(@Nullable ServerLevel hub, PendingLink link) {
+        if (hub != null) {
+            ChunkPos frameChunk = new ChunkPos(link.touchedBlock());
+            hub.getChunkSource().removeRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
         }
     }
 
@@ -310,22 +329,30 @@ public final class VaultPortalLinks {
         }
 
         Direction creatorSide = getSideOf(frameOpening, link.touchPosition());
-        WindowSize fittedEntry = VaultPortalGeometry.fitEntryWindow(frameOpening, entranceOpening, (column, row) -> isFree(
-            world, VaultPortalGeometry.getRoomCell(frameOpening, entranceOpening, arrival, column, row)
+        WindowSize fittedEntry = VaultPortalGeometry.fitWindow(frameOpening, entranceOpening, (column, row) -> isFree(
+            world, VaultPortalGeometry.getArrivalCell(frameOpening, entranceOpening, arrival, column, row)
         ));
         for (Direction viewerSide : new Direction[]{creatorSide, creatorSide.getOpposite()}) {
             Placement entry = fittedEntry == null
                 ? VaultPortalGeometry.place(frameOpening, viewerSide, entranceOpening, arrival)
-                : VaultPortalGeometry.placeFittedEntry(frameOpening, viewerSide, entranceOpening, arrival, fittedEntry);
+                : VaultPortalGeometry.placeFitted(frameOpening, viewerSide, entranceOpening, arrival, fittedEntry);
             McHelper.spawnServerEntity(VaultPortal.create(hub, VaultPortalRole.ENTRY, vaultId, frameBlock, entry, world.dimension()));
         }
-        Placement exit = VaultPortalGeometry.place(entranceOpening, arrival, frameOpening, creatorSide);
+        WindowSize fittedExit = VaultPortalGeometry.fitWindow(entranceOpening, frameOpening, (column, row) -> isFree(
+            hub, VaultPortalGeometry.getArrivalCell(entranceOpening, frameOpening, creatorSide, column, row)
+        ));
+        Placement exit = fittedExit == null
+            ? VaultPortalGeometry.place(entranceOpening, arrival, frameOpening, creatorSide)
+            : VaultPortalGeometry.placeFitted(entranceOpening, arrival, frameOpening, creatorSide, fittedExit);
         McHelper.spawnServerEntity(VaultPortal.create(world, VaultPortalRole.EXIT, vaultId, entranceBlock, exit, hub.dimension()));
-        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {})",
+        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {}, exit window {})",
             frameOpening.min(), frameOpening.max(), hub.dimension().location(),
-            entranceOpening.min(), entranceOpening.max(), vaultId,
-            fittedEntry == null ? "over the smaller opening" : fittedEntry.width() + " x " + fittedEntry.height());
+            entranceOpening.min(), entranceOpening.max(), vaultId, describe(fittedEntry), describe(fittedExit));
         return LinkAttempt.LINKED;
+    }
+
+    private static String describe(@Nullable WindowSize fittedWindow) {
+        return fittedWindow == null ? "over the smaller opening" : fittedWindow.width() + " x " + fittedWindow.height();
     }
 
     private static LinkAttempt impossible(UUID vaultId, String reason) {
