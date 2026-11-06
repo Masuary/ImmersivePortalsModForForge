@@ -56,7 +56,7 @@ public class IPModCompatibilityWarning {
         }
         
         for (ModInfo mod : maybeIncompatibleMods) {
-            if (ModList.get().isLoaded(mod.modId)) {
+            if (IPGlobal.enableWarning && ModList.get().isLoaded(mod.modId)) {
                 Helper.err(String.format(
                     "WARNING: This mod is maybe incompatible with Immersive Portals: %s(%s)",
                     mod.modName, mod.modId
@@ -93,13 +93,14 @@ public class IPModCompatibilityWarning {
                             "WARNING: Immersive Portals mod maybe has compatibility issues with mod %s(%s).",
                             mod.modName, mod.modId
                         );
+                        // the config is loaded by now, unlike when this task was registered
                         if (IPGlobal.enableWarning) {
                             CHelper.printChat(
                                 new TextComponent(warningMessage).withStyle(ChatFormatting.RED)
                                     .append(IPMcHelper.getDisableWarningText())
                             );
+                            Helper.err(warningMessage);
                         }
-                        Helper.err(warningMessage);
                     })
                 ));
             }

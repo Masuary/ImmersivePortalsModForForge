@@ -104,7 +104,7 @@ public class IPGlobal {
     
     public static boolean enableClippingMechanism = true;
     
-    public static boolean enableWarning = true;
+    public static boolean enableWarning = false;
     
     public static boolean enableMirrorCreation = true;
     

@@ -55,7 +55,9 @@ public class IPConfig {
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
-        enableWarning = builder.define("enableWarning", true);
+        enableWarning = builder
+            .comment("Warn in chat and in the log about mods that may be incompatible (off in this fork: the pack is tested)")
+            .define("enableWarning", false);
         enableMirrorCreation = builder.define("enableMirrowCreation", true);
         maxPortalLayer = builder.defineInRange("maxPortalLayer", 5, 0, Integer.MAX_VALUE);
         sharedBlockMeshBufferOptimization = builder.define("sharedBlockMeshBufferOptimization", true);
