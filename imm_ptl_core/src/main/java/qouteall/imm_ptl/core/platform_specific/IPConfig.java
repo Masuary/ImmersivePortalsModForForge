@@ -6,6 +6,7 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPreviewRules;
 import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.dimension.DimensionMisc;
@@ -52,6 +53,8 @@ public class IPConfig {
     public static ForgeConfigSpec.BooleanValue editGlobalDimensionStack;
     public static ForgeConfigSpec.BooleanValue restoreMissingVanillaDimensions;
     public static ForgeConfigSpec.ConfigValue<List<? extends String>> portalDisabledDimensions;
+    public static ForgeConfigSpec.EnumValue<VaultPreviewRules.Mode> vaultPreview;
+    public static ForgeConfigSpec.IntValue vaultPreviewTimeoutMinutes;
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
@@ -99,6 +102,12 @@ public class IPConfig {
         portalDisabledDimensions = builder
             .comment("Dimensions (\"namespace:path\") or whole namespaces (\"namespace\") where portals are turned off: a portal in or into one is not shown, loads no chunks and teleports nothing (\"the_vault\" turns off the see-through Vault Hunters portals)")
             .defineList("portalDisabledDimensions", List.of(), PortalDimensionFilter::isValidEntry);
+        vaultPreview = builder
+            .comment("Vault Hunters: lighting a hub frame creates its vault at once, so the frame shows it before anyone enters. off = Vault Hunters' own behaviour (the vault is made on the first touch); untilBroken = an unentered vault stays until its frame is broken; untilRestart = also dropped when the server restarts; timeout = also dropped after vaultPreviewTimeoutMinutes. A dropped vault's frame stays lit and makes a fresh vault on the next touch")
+            .defineEnum("vaultPreview", VaultPreviewRules.Mode.untilBroken, VaultPreviewRules.Mode.values());
+        vaultPreviewTimeoutMinutes = builder
+            .comment("Minutes an unentered vault preview stays with vaultPreview = timeout")
+            .defineInRange("vaultPreviewTimeoutMinutes", 5, 1, 10080);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, builder.build());
     }
@@ -161,6 +170,7 @@ public class IPConfig {
         IPGlobal.editGlobalDimensionStack = editGlobalDimensionStack.get();
         DimensionMisc.restoreMissingVanillaDimensions = restoreMissingVanillaDimensions.get();
         PortalDimensionFilter.configure(portalDisabledDimensions.get());
+        VaultPreviewRules.configure(vaultPreview.get(), vaultPreviewTimeoutMinutes.get());
 
         Helper.log("IP Config Applied");
     }

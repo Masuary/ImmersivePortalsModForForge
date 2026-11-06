@@ -21,9 +21,14 @@ Portals on the other side.
   wider or taller than the start-room portal get a window stretched over the whole frame, and the window back to the
   hub covers the whole start-room portal even when the hub frame is smaller.
 - Works for a player who enters alone: the hub frame stays loaded until its window is made.
-- The first player into a freshly lit frame still takes Vault Hunters' normal teleport (the vault does not exist before
-  that). Floor (horizontal) frames keep the normal Vault Hunters portal. Completion, death, kick and timeout keep
-  Vault Hunters' own teleport.
+- Lighting a frame creates its vault at once (made by Vault Hunters itself, with the lighter as its owner), so the frame
+  shows the vault before anyone enters, and the first player walks in through the window too. The vault timer still
+  only starts once a runner leaves the start room. An unentered vault is dropped when its frame is broken; config
+  `vaultPreview` (`untilBroken` by default, or `untilRestart`, `timeout` with `vaultPreviewTimeoutMinutes`, or `off`
+  for Vault Hunters' own behaviour) decides whether a restart or a timeout drops it too. A dropped vault's frame stays
+  lit and makes a fresh vault on the next touch.
+- Floor (horizontal) frames and Greed challenge crystals keep the normal Vault Hunters portal. Completion, death, kick
+  and timeout keep Vault Hunters' own teleport.
 
 ### Vault rules
 
@@ -52,6 +57,7 @@ Portals on the other side.
   the End on servers that removed them.
 - New config `portalDisabledDimensions`: dimension ids or whole namespaces where portals are not shown, loaded or
   crossed.
+- New configs `vaultPreview` and `vaultPreviewTimeoutMinutes` (see the vault portals above).
 - Compatibility warnings are off by default (`enableWarning = false`); an admin can turn them back on.
 
 ### Mod compatibility and other fixes

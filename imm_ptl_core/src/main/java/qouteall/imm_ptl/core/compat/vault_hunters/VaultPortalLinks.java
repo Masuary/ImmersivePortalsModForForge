@@ -161,10 +161,24 @@ public final class VaultPortalLinks {
             return;
         }
         // the previous tick's position: a fast player can already be past the frame's plane when the touch fires
-        Vec3 touchPosition = new Vec3(player.xo, player.yo, player.zo);
-        pendingLinks.put(vaultId, new PendingLink(level.dimension(), pos.immutable(), touchPosition, level.getGameTime()));
-        ChunkPos frameChunk = new ChunkPos(pos);
-        level.getChunkSource().addRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
+        requestLink(level, pos, new Vec3(player.xo, player.yo, player.zo), vaultId);
+    }
+
+    /**
+     * Links the frame around {@code frameBlock} to its vault once the vault's start room exists; the window back
+     * leads to the side of the frame {@code viewerPosition} is on.
+     */
+    static void requestLink(ServerLevel hub, BlockPos frameBlock, Vec3 viewerPosition, UUID vaultId) {
+        if (pendingLinks.containsKey(vaultId) || unlinkableVaults.contains(vaultId)) {
+            return;
+        }
+        pendingLinks.put(vaultId, new PendingLink(hub.dimension(), frameBlock.immutable(), viewerPosition, hub.getGameTime()));
+        ChunkPos frameChunk = new ChunkPos(frameBlock);
+        hub.getChunkSource().addRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
+    }
+
+    static boolean isLinkPending(UUID vaultId) {
+        return pendingLinks.containsKey(vaultId);
     }
 
     public static void removeIfStale(VaultPortal portal) {

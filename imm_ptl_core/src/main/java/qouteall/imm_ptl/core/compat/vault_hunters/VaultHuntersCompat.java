@@ -46,6 +46,7 @@ public final class VaultHuntersCompat {
         MinecraftForge.EVENT_BUS.addListener(VaultHuntersCompat::onPlayerTick);
         DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(VaultHuntersCompat::onLevelRemoved);
         VaultPortalLinks.init();
+        VaultPreviews.init();
     }
 
     public static boolean isNonListenerInVault(ServerPlayer player) {

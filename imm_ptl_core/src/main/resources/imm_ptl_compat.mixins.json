@@ -23,6 +23,8 @@
     "MixinSodiumShaderLoader",
     "MixinSodiumWorldRenderer",
     "MixinVaultBatchBlockPlacer",
+    "MixinVaultClassicListenersLogic",
+    "MixinVaultCrystalItem",
     "MixinVaultEntityState",
     "MixinVaultPortalBlock",
     "MixinVaultSpiritEntity",
