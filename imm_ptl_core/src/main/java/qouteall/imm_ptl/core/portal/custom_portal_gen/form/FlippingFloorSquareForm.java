@@ -7,11 +7,11 @@ import com.mojang.serialization.codecs.ListCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Registry;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.PortalExtension;
@@ -29,7 +29,7 @@ import java.util.stream.IntStream;
 
 public class FlippingFloorSquareForm extends PortalGenForm {
     
-    public static final ListCodec<Block> blockListCodec = new ListCodec<>(Registry.BLOCK.byNameCodec());
+    public static final ListCodec<Block> blockListCodec = new ListCodec<>(ForgeRegistries.BLOCKS.getCodec());
     
     public static final Codec<FlippingFloorSquareForm> codec = RecordCodecBuilder.create(instance -> {
         return instance.group(
@@ -157,7 +157,7 @@ public class FlippingFloorSquareForm extends PortalGenForm {
                     y -> McHelper.getMaxContentYExclusive(toWorld) - y
                 ).mapToObj(y -> new BlockPos(x, y, z)))
             )
-            .map(blockPos -> IntBox.getBoxByBasePointAndSize(areaSize, blockPos))
+            .map(blockPos -> IntBox.fromBasePointAndSize(blockPos, areaSize))
             .filter(intBox -> intBox.stream().allMatch(
                 pos -> {
                     BlockState blockState = toWorld.getBlockState(pos);
@@ -176,7 +176,7 @@ public class FlippingFloorSquareForm extends PortalGenForm {
                     }
                 )
             )
-            .findFirst().orElseGet(() -> IntBox.getBoxByBasePointAndSize(areaSize, toPos))
+            .findFirst().orElseGet(() -> IntBox.fromBasePointAndSize(toPos, areaSize))
             .getMoved(Direction.DOWN.getNormal());
     }
     

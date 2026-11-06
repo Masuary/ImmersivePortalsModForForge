@@ -64,7 +64,7 @@ public class PacketRedirection {
     // avoid duplicate redirect nesting
     public static void sendRedirectedPacket(
         ServerGamePacketListenerImpl serverPlayNetworkHandler,
-        Packet<ClientGamePacketListener> packet,
+        Packet<?> packet,
         ResourceKey<Level> dimension
     ) {
         if (getForceRedirectDimension() == dimension) {
@@ -95,26 +95,34 @@ public class PacketRedirection {
     
     public static Packet<ClientGamePacketListener> createRedirectedMessage(
         ResourceKey<Level> dimension,
-        Packet<ClientGamePacketListener> packet
+        Packet<?> packet
     ) {
         ClientboundCustomPayloadPacket result =
             new ClientboundCustomPayloadPacket(id_stcRedirected, dummyByteBuf);
-        
+
         ((IECustomPayloadPacket) result).ip_setRedirectedDimension(dimension);
-        ((IECustomPayloadPacket) result).ip_setRedirectedPacket(packet);
-        
+        ((IECustomPayloadPacket) result).ip_setRedirectedPacket(castToClientGamePacket(packet));
+
         return result;
     }
-    
+
+    // the redirected packet always ends up being handled by a ClientGamePacketListener,
+    // but the packets flowing through this class are only statically known as Packet<?>
+    // (mixin redirects on vanilla methods that themselves only take Packet<?>)
+    @SuppressWarnings("unchecked")
+    public static Packet<ClientGamePacketListener> castToClientGamePacket(Packet<?> packet) {
+        return (Packet<ClientGamePacketListener>) packet;
+    }
+
     public static void sendRedirectedMessage(
         ServerPlayer player,
         ResourceKey<Level> dimension,
-        Packet packet
+        Packet<?> packet
     ) {
         player.connection.send(createRedirectedMessage(dimension, packet));
     }
-    
-    public static int getPacketId(Packet packet) {
+
+    public static int getPacketId(Packet<?> packet) {
         try {
             return ConnectionProtocol.PLAY.getPacketId(PacketFlow.CLIENTBOUND, packet);
         }
@@ -122,8 +130,8 @@ public class PacketRedirection {
             throw new IllegalArgumentException(e);
         }
     }
-    
-    public static Packet createPacketById(
+
+    public static Packet<?> createPacketById(
         int messageType, FriendlyByteBuf buf
     ) {
         return ConnectionProtocol.PLAY.createPacket(PacketFlow.CLIENTBOUND, messageType, buf);

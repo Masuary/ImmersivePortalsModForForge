@@ -81,7 +81,7 @@ public class SimpleBlockPredicate implements Predicate<BlockState> {
         }
         
         if (blockRegistry.keySet().contains(id)) {
-            Block block = Registry.BLOCK.get(id);
+            Block block = blockRegistry.get(id);
             return DataResult.success(new SimpleBlockPredicate(string, block), Lifecycle.stable());
         }
         

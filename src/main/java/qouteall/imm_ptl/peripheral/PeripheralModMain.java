@@ -14,6 +14,7 @@ import qouteall.imm_ptl.peripheral.alternate_dimension.AlternateDimensions;
 import qouteall.imm_ptl.peripheral.alternate_dimension.ChaosBiomeSource;
 import qouteall.imm_ptl.peripheral.alternate_dimension.ErrorTerrainGenerator;
 import qouteall.imm_ptl.peripheral.alternate_dimension.FormulaGenerator;
+import qouteall.imm_ptl.peripheral.alternate_dimension.NormalSkylandGenerator;
 import qouteall.imm_ptl.peripheral.dim_stack.DimStackGameRule;
 import qouteall.imm_ptl.peripheral.dim_stack.DimStackManagement;
 import qouteall.imm_ptl.peripheral.guide.IPGuide;
@@ -31,10 +32,11 @@ public class PeripheralModMain {
     private static final DeferredRegister<Codec<? extends BiomeSource>> BIOME_SOURCE = DeferredRegister.create(Registry.BIOME_SOURCE_REGISTRY, "immersive_portals");
 
     public static final RegistryObject<Codec<? extends ChunkGenerator>> ERROR_TERRAIN_GENERATOR = CHUNK_GENERATOR.register("error_terrain_generator", () -> ErrorTerrainGenerator.codec);
-    public static final RegistryObject<Codec<? extends ChunkGenerator>> NORMAL_SKYLAND_GENERATOR = CHUNK_GENERATOR.register("normal_skyland_generator", () -> ErrorTerrainGenerator.codec);
+    public static final RegistryObject<Codec<? extends ChunkGenerator>> NORMAL_SKYLAND_GENERATOR = CHUNK_GENERATOR.register("normal_skyland_generator", () -> NormalSkylandGenerator.codec);
 
     public static final RegistryObject<Codec<? extends BiomeSource>> CHAOS_BIOME_SOURCE = BIOME_SOURCE.register("chaos_biome_source", () -> ChaosBiomeSource.CODEC);
 
+    @SuppressWarnings("deprecation")
     public static void init() {
         FormulaGenerator.init();
         

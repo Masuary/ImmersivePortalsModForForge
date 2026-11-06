@@ -10,13 +10,17 @@ import javax.annotation.Nullable;
 
 /**
  * Places a see-through portal over a Vault Hunters portal opening (a hub frame or a vault's start-room portal) that
- * leads to another opening. Both sides use the same size, the smaller of the two openings, centred and bottom-aligned
- * so the floors line up. Pure geometry without Vault Hunters classes, so it is unit tested.
+ * leads to another opening. Both sides use the same size, centred and bottom-aligned so the floors line up: the smaller
+ * of the two openings, or for a hub frame's entry window the whole frame where the start room has room for it. Pure
+ * geometry without Vault Hunters classes, so it is unit tested.
  */
 public final class VaultPortalGeometry {
     // Vault Hunters' portal block is a nether-portal slab (6/16 to 10/16 across); the portal plane sits just in front
     // of it on the viewer's side, so the swirl texture stays behind the portal surface
     public static final double SURFACE_OFFSET = 0.13;
+    // a fitted entry window ends in the start room past the wall the start-room portal sits in, far enough that a
+    // player (0.3 blocks from the centre to the side) arriving there is clear of the wall, the portal and its window
+    public static final double ROOM_ARRIVAL_OFFSET = 0.5 + 0.3 + 0.01;
     private static final Vec3 UP = new Vec3(0, 1, 0);
 
     /**
@@ -53,6 +57,18 @@ public final class VaultPortalGeometry {
     ) {
     }
 
+    public record WindowSize(int width, int height) {
+    }
+
+    /**
+     * Whether the block a player walks into in front of a start-room portal is free, by column (the block offset from
+     * the leftmost block the window can cover, see {@link #fitEntryWindow}) and row (above the portal's bottom).
+     */
+    @FunctionalInterface
+    public interface RoomCellTest {
+        boolean isFree(int column, int row);
+    }
+
     private VaultPortalGeometry() {
     }
 
@@ -61,19 +77,97 @@ public final class VaultPortalGeometry {
      * @param arrivalDirection the direction a player moves in when coming out of {@code to}
      */
     public static Placement place(Opening from, Direction viewerSide, Opening to, Direction arrivalDirection) {
+        return place(from, viewerSide, to, arrivalDirection,
+            Math.min(from.width(), to.width()), Math.min(from.height(), to.height()), SURFACE_OFFSET);
+    }
+
+    /**
+     * A hub frame's entry window of a size from {@link #fitEntryWindow}, ending in the start room in front of its
+     * wall (see {@link #ROOM_ARRIVAL_OFFSET}); the window back stays the size of the smaller opening.
+     */
+    public static Placement placeFittedEntry(
+        Opening frame, Direction viewerSide, Opening startRoom, Direction arrivalDirection, WindowSize size
+    ) {
+        return place(frame, viewerSide, startRoom, arrivalDirection, size.width(), size.height(), ROOM_ARRIVAL_OFFSET);
+    }
+
+    /**
+     * The largest entry window, up to the whole hub frame and centred on the start-room portal, for which every block a
+     * player can arrive in is free; at least the smaller of the two openings, or null when even that is not free.
+     * Column 0 of {@code room} is the leftmost block a window of the frame's width can cover.
+     */
+    @Nullable
+    public static WindowSize fitEntryWindow(Opening frame, Opening startRoom, RoomCellTest room) {
+        int frameWidth = (int) frame.width();
+        int frameHeight = (int) frame.height();
+        int minWidth = (int) Math.min(frame.width(), startRoom.width());
+        int minHeight = (int) Math.min(frame.height(), startRoom.height());
+        int widestFirstColumn = getFirstColumn(startRoom, frameWidth);
+        WindowSize best = null;
+        for (int width = frameWidth; width >= minWidth; width--) {
+            int firstColumn = getFirstColumn(startRoom, width) - widestFirstColumn;
+            int columns = getColumnCount(startRoom, width);
+            int height = 0;
+            while (height < frameHeight && isRowFree(room, firstColumn, columns, height)) {
+                height++;
+            }
+            if (height >= minHeight && (best == null || width * height > best.width() * best.height())) {
+                best = new WindowSize(width, height);
+            }
+        }
+        return best;
+    }
+
+    // the first block column (along the start-room portal's width) that a centred window of this width covers
+    private static int getFirstColumn(Opening opening, double width) {
+        return (int) Math.floor(getLateralCentre(opening) - width / 2 + 1.0E-9);
+    }
+
+    private static int getColumnCount(Opening opening, double width) {
+        return (int) Math.ceil(getLateralCentre(opening) + width / 2 - 1.0E-9) - getFirstColumn(opening, width);
+    }
+
+    private static double getLateralCentre(Opening opening) {
+        Vec3 bottomCentre = opening.bottomCentre();
+        return opening.normalAxis() == Direction.Axis.Z ? bottomCentre.x : bottomCentre.z;
+    }
+
+    private static boolean isRowFree(RoomCellTest room, int firstColumn, int columns, int row) {
+        for (int column = firstColumn; column < firstColumn + columns; column++) {
+            if (!room.isFree(column, row)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The block position of a start-room cell from {@link #fitEntryWindow}: in the layer the player arrives in, in front
+     * of the start-room portal on its arrival side.
+     */
+    public static BlockPos getRoomCell(Opening frame, Opening startRoom, Direction arrivalDirection, int column, int row) {
+        int lateral = getFirstColumn(startRoom, frame.width()) + column;
+        BlockPos portalLayer = startRoom.normalAxis() == Direction.Axis.Z
+            ? new BlockPos(lateral, startRoom.min().getY() + row, startRoom.min().getZ())
+            : new BlockPos(startRoom.min().getX(), startRoom.min().getY() + row, lateral);
+        return portalLayer.relative(arrivalDirection);
+    }
+
+    private static Placement place(
+        Opening from, Direction viewerSide, Opening to, Direction arrivalDirection,
+        double width, double height, double destinationOffset
+    ) {
         if (viewerSide.getAxis() != from.normalAxis() || arrivalDirection.getAxis() != to.normalAxis()) {
             throw new IllegalArgumentException(
                 "Sides %s and %s do not face the openings %s and %s".formatted(viewerSide, arrivalDirection, from, to)
             );
         }
-        double width = Math.min(from.width(), to.width());
-        double height = Math.min(from.height(), to.height());
         Vec3 normal = Vec3.atLowerCornerOf(viewerSide.getNormal());
         Vec3 arrival = Vec3.atLowerCornerOf(arrivalDirection.getNormal());
         Vec3 halfHeight = new Vec3(0, height / 2, 0);
 
         Vec3 origin = from.bottomCentre().add(normal.scale(SURFACE_OFFSET)).add(halfHeight);
-        Vec3 destination = to.bottomCentre().add(arrival.scale(SURFACE_OFFSET)).add(halfHeight);
+        Vec3 destination = to.bottomCentre().add(arrival.scale(destinationOffset)).add(halfHeight);
         return new Placement(
             origin, UP.cross(normal), UP, width, height, destination, getYawRotation(normal.scale(-1), arrival)
         );

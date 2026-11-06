@@ -184,7 +184,8 @@ public class DimStackInfo {
         }
         
         try {
-            Optional<Block> block = Registry.BLOCK.getOptional(new ResourceLocation(str));
+            Optional<Block> block = MiscHelper.getServer().registryAccess()
+                .registryOrThrow(Registry.BLOCK_REGISTRY).getOptional(new ResourceLocation(str));
             return block.map(Block::defaultBlockState).orElse(null);
         }
         catch (Exception e) {

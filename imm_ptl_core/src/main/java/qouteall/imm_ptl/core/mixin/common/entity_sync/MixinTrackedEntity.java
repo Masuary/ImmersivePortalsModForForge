@@ -25,6 +25,7 @@ import qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph;
 import qouteall.imm_ptl.core.ducks.IEEntityTracker;
 import qouteall.imm_ptl.core.ducks.IEEntityTrackerEntry;
 import qouteall.imm_ptl.core.ducks.IEThreadedAnvilChunkStorage;
+import qouteall.imm_ptl.core.compat.SteamRailsCompat;
 import qouteall.imm_ptl.core.network.PacketRedirection;
 
 import java.util.List;
@@ -83,7 +84,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
     )
     private void onSendToNearbyPlayers(
         ServerGamePacketListenerImpl serverPlayNetworkHandler,
-        Packet packet_1
+        Packet<?> packet_1
     ) {
         PacketRedirection.sendRedirectedPacket(serverPlayNetworkHandler, packet_1, entity.level.dimension());
     }
@@ -129,12 +130,13 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         );
         ChunkPos chunkPos = entity.chunkPosition();
         boolean isWatchedNow =
-            NewChunkTrackingGraph.isPlayerWatchingChunkWithinRaidus(
+            (NewChunkTrackingGraph.isPlayerWatchingChunkWithinRaidus(
                 player,
                 this.entity.level.dimension(),
                 chunkPos.x,
                 chunkPos.z,
                 maxWatchDistance
+            ) || (player.level == this.entity.level && SteamRailsCompat.isTrackedLevelWide(this.entity))
             ) && this.entity.broadcastToPlayer(player);
         if (isWatchedNow) {
             
@@ -163,7 +165,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
         // avoid sending wrong position delta update packet
         ((IEEntityTrackerEntry) serverEntity).ip_updateTrackedEntityPosition();
         
-        Packet spawnPacket = entity.getAddEntityPacket();
+        Packet<?> spawnPacket = entity.getAddEntityPacket();
         Packet<ClientGamePacketListener> redirected = PacketRedirection.createRedirectedMessage(entity.level.dimension(), spawnPacket);
         seenBy.forEach(handler -> {
             handler.send(redirected);
@@ -195,6 +197,7 @@ public abstract class MixinTrackedEntity implements IEEntityTracker {
      * but does not send entity unload packet
      * because in this stage the connection was already closed
      */
+    @Deprecated
     @Override
     public void ip_onPlayerDisconnect(ServerPlayer player) {
         if (seenBy.remove(player.connection)) {

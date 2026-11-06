@@ -37,6 +37,7 @@ import qouteall.imm_ptl.core.platform_specific.forge.networking.Dim_Confirm;
 import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.platform_specific.IsVanilla;
 import qouteall.imm_ptl.core.portal.Portal;
+import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalTrackedPortal;
 import qouteall.q_misc_util.Helper;
@@ -220,6 +221,9 @@ public class ServerTeleportationManager {
     
     // fires EntityTravelToDimensionEvent like a vanilla dimension change, so other mods can react or veto
     private boolean isDimensionTravelAllowed(Entity entity, ResourceKey<Level> dimensionTo, @Nullable Portal portal) {
+        if (PortalDimensionFilter.isPortalDisabled(entity.level.dimension(), dimensionTo)) {
+            return false;
+        }
         if (entity.level.dimension() == dimensionTo) {
             return true;
         }
@@ -657,6 +661,12 @@ public class ServerTeleportationManager {
         return passengerList.stream().anyMatch(this::doesEntityClusterContainPlayer);
     }
     
+    // another mod's dimension change (e.g. Vault Hunters sending a player to spawn) is synced by vanilla's teleport
+    // confirmation, which a recent portal crossing would otherwise cancel, letting a stale client move through
+    public void onConventionalDimensionChange(ServerPlayer player) {
+        lastTeleportGameTime.remove(player);
+    }
+    
     public boolean isJustTeleported(Entity entity, long valveTickTime) {
         long currGameTime = McHelper.getServerGameTime();
         Long lastTeleportGameTime = this.lastTeleportGameTime.getOrDefault(entity, -100000L);
@@ -709,6 +719,7 @@ public class ServerTeleportationManager {
         }
     }
     
+    @SuppressWarnings("unchecked")
     public static <E extends Entity> E teleportRegularEntityTo(
         E entity, ResourceKey<Level> targetDim, Vec3 targetPos
     ) {

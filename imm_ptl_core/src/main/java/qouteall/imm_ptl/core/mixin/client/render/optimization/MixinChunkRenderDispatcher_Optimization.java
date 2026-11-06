@@ -104,12 +104,12 @@ public abstract class MixinChunkRenderDispatcher_Optimization {
             target = "Ljava/util/Queue;isEmpty()Z"
         )
     )
-    private boolean redirectIsEmpty(Queue bufferQueue) {
+    private boolean redirectIsEmpty(Queue<ChunkBufferBuilderPack> bufferQueue) {
         if (!IPGlobal.enableSharedBlockMeshBuffers) {
             return bufferQueue.isEmpty();
         }
-        
-        Object buffer = bufferQueue.poll();
+
+        ChunkBufferBuilderPack buffer = bufferQueue.poll();
         
         if (buffer != null) {
             for (; ; ) {
@@ -176,6 +176,7 @@ public abstract class MixinChunkRenderDispatcher_Optimization {
             target = "Ljava/util/Queue;poll()Ljava/lang/Object;"
         )
     )
+    @SuppressWarnings("unchecked")
     private <E> E redirectPollBuffer(Queue<E> queue) {
         if (!IPGlobal.enableSharedBlockMeshBuffers) {
             return queue.poll();

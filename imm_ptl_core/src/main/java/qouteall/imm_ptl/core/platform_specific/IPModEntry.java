@@ -17,6 +17,7 @@ import qouteall.imm_ptl.core.IPModMain;
 import qouteall.imm_ptl.core.commands.PortalCommand;
 import qouteall.imm_ptl.core.compat.GravityChangerInterface;
 import qouteall.imm_ptl.core.compat.IPModCompatibilityWarning;
+import qouteall.imm_ptl.core.compat.SteamRailsCompat;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultHuntersCompat;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
@@ -44,6 +45,7 @@ public class IPModEntry {
 
         IPModMain.init();
         RequiemCompat.init();
+        SteamRailsCompat.init();
 
         IPRegistry.registerEntities(FMLJavaModLoadingContext.get().getModEventBus());
         
@@ -102,6 +104,7 @@ public class IPModEntry {
 
     private static void onBeforeDimensionTravel(ServerPlayer player) {
         CustomPortalGenManagement.onBeforeConventionalDimensionChange(player);
+        IPGlobal.serverTeleportationManager.onConventionalDimensionChange(player);
         IPGlobal.chunkDataSyncManager.removePlayerFromChunkTrackersAndEntityTrackers(player);
 
         IPGlobal.serverTaskList.addTask(() -> {

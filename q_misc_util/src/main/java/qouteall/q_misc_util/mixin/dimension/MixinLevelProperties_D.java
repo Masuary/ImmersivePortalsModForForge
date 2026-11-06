@@ -4,6 +4,7 @@ import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.storage.PrimaryLevelData;
 import org.spongepowered.asm.mixin.Final;
@@ -37,7 +38,7 @@ public class MixinLevelProperties_D {
     ) {
         ((IEGeneratorOptions) worldGenSettings).setDimOptionRegistry(
             DimensionMisc.getAdditionalDimensionsRemoved(
-                ((MappedRegistry) worldGenSettings.dimensions())
+                ((MappedRegistry<LevelStem>) worldGenSettings.dimensions())
             )
         );
     }

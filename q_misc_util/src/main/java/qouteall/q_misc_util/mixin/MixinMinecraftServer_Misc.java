@@ -6,6 +6,7 @@ import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.datafixers.DataFixer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.WorldStem;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.ChunkProgressListenerFactory;
@@ -32,7 +33,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 
 @Mixin(MinecraftServer.class)
-public abstract class MixinMinecraftServer_Misc extends ReentrantBlockableEventLoop implements IEMinecraftServer_Misc {
+public abstract class MixinMinecraftServer_Misc extends ReentrantBlockableEventLoop<TickTask> implements IEMinecraftServer_Misc {
     public MixinMinecraftServer_Misc(String string) {
         super(string);
         throw new RuntimeException();

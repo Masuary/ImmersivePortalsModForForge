@@ -267,7 +267,7 @@ public class DiligentMatcher {
             sideLenList.add(b);
         }
         
-        return sideLenList.stream().reduce((a, b) -> IntMath.gcd(a, b)).get();
+        return sideLenList.intStream().reduce((a, b) -> IntMath.gcd(a, b)).getAsInt();
     }
     
     public static BlockPortalShape shrinkShapeBy(BlockPortalShape shape, int div) {

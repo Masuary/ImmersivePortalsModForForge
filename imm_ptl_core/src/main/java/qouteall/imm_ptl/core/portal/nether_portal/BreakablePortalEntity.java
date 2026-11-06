@@ -252,8 +252,10 @@ public abstract class BreakablePortalEntity extends Portal {
     
     
     public static <T extends Portal> List<T> findReversePortals(T portal) {
+        @SuppressWarnings("unchecked")
+        Class<T> portalClass = (Class<T>) portal.getClass();
         List<T> revs = McHelper.findEntitiesByBox(
-            (Class<T>) portal.getClass(),
+            portalClass,
             portal.getDestinationWorld(),
             new AABB(new BlockPos(portal.getDestPos())),
             10,

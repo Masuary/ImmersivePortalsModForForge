@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.model.data.EmptyModelData;
 import org.lwjgl.system.MemoryStack;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
@@ -81,13 +82,13 @@ public class OverlayRendering {
         
         List<BakedQuad> result = new ArrayList<>();
         
-        result.addAll(model.getQuads(blockState, facing, random));
-        
-        result.addAll(model.getQuads(blockState, null, random));
-        
+        result.addAll(model.getQuads(blockState, facing, random, EmptyModelData.INSTANCE));
+
+        result.addAll(model.getQuads(blockState, null, random, EmptyModelData.INSTANCE));
+
         if (result.isEmpty()) {
             for (Direction direction : Direction.values()) {
-                result.addAll(model.getQuads(blockState, direction, random));
+                result.addAll(model.getQuads(blockState, direction, random, EmptyModelData.INSTANCE));
             }
         }
         

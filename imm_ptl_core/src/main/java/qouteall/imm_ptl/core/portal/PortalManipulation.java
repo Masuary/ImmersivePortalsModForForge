@@ -166,9 +166,9 @@ public class PortalManipulation {
     }
     
     //the new portal will not be added into world
-    public static Portal copyPortal(Portal portal, EntityType<Portal> entityType) {
+    public static <T extends Portal> T copyPortal(Portal portal, EntityType<T> entityType) {
         Level world = portal.level;
-        Portal newPortal = entityType.create(world);
+        T newPortal = entityType.create(world);
         newPortal.dimensionTo = portal.dimensionTo;
         newPortal.setPos(portal.getX(), portal.getY(), portal.getZ());
         newPortal.setDestination(portal.getDestPos());

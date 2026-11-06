@@ -21,7 +21,6 @@ public class IPModCompatibilityWarning {
     
     private static final List<ModInfo> incompatibleMods = Lists.newArrayList(
         new ModInfo("mcxr-core", "MCXR"),
-        new ModInfo("taterzens", "Taterzens"),
         new ModInfo("altoclef", "Altoclef"),
 //        new ModInfo("bitsandchisels", "Bits & Chisels"),
         new ModInfo("tweakeroo", "Tweakeroo"),

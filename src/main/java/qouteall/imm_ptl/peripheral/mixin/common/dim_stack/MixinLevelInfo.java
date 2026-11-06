@@ -20,6 +20,7 @@ public class MixinLevelInfo {
         at = @At("RETURN"),
         cancellable = true
     )
+    @SuppressWarnings("deprecation")
     private static void onReadLevelInfoFromDynamic(
         Dynamic<?> dynamic,
         DataPackConfig dataPackSettings,

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
@@ -143,6 +144,7 @@ public class CollisionHelper {
         return Math.abs(a) < Math.abs(b) ? a : b;
     }
     
+    @SuppressWarnings("deprecation")
     private static Vec3 getOtherSideMove(
         Entity entity,
         Vec3 attemptedMove,
@@ -166,7 +168,11 @@ public class CollisionHelper {
             return attemptedMove;
         }
         
-        if (!destinationWorld.hasChunkAt(new BlockPos(boxOtherSide.getCenter()))) {
+        BlockPos otherSideCenter = new BlockPos(boxOtherSide.getCenter());
+        if (!destinationWorld.hasChunk(
+            SectionPos.blockToSectionCoord(otherSideCenter.getX()),
+            SectionPos.blockToSectionCoord(otherSideCenter.getZ())
+        )) {
             if (entity instanceof Player && entity.level.isClientSide()) {
                 informClientStagnant();
             }
@@ -272,6 +278,7 @@ public class CollisionHelper {
      * Vanilla copy {@link Entity#collide(Vec3)}
      * But filters collisions behind the clipping plane
      */
+    @SuppressWarnings("deprecation")
     private static Vec3 handleCollisionWithClipping(
         Entity entity, Vec3 attemptedMove, Vec3 clippingPlanePos, Vec3 clippingPlaneNormal
     ) {

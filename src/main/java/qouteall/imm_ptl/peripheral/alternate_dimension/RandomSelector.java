@@ -31,6 +31,7 @@ public class RandomSelector<T> {
         return selectByRandomValue(randomValue);
     }
     
+    @SuppressWarnings("unchecked")
     public T selectByRandomValue(int randomValue) {
         int result = Arrays.binarySearch(
             subWeightSum,

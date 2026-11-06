@@ -50,7 +50,7 @@ public class MyRenderHelper {
             try {
                 DrawFbInAreaShader shader = new DrawFbInAreaShader(
                     getResourceFactory(resourceManager),
-                    "portal_draw_fb_in_area",
+                    new ResourceLocation("portal_draw_fb_in_area"),
                     DefaultVertexFormat.POSITION_COLOR
                 );
                 resultConsumer.accept(shader);
@@ -65,7 +65,7 @@ public class MyRenderHelper {
             try {
                 ShaderInstance shader = new ShaderInstance(
                     getResourceFactory(resourceManager),
-                    "portal_area",
+                    new ResourceLocation("portal_area"),
                     DefaultVertexFormat.POSITION_COLOR
                 );
                 resultConsumer.accept(shader);
@@ -80,7 +80,7 @@ public class MyRenderHelper {
             try {
                 ShaderInstance shader = new ShaderInstance(
                     getResourceFactory(resourceManager),
-                    "blit_screen_noblend",
+                    new ResourceLocation("blit_screen_noblend"),
                     DefaultVertexFormat.POSITION_TEX_COLOR
                 );
                 resultConsumer.accept(shader);
@@ -109,7 +109,7 @@ public class MyRenderHelper {
         public final Uniform uniformH;
         
         public DrawFbInAreaShader(
-            ResourceProvider factory, String name, VertexFormat format
+            ResourceProvider factory, ResourceLocation name, VertexFormat format
         ) throws IOException {
             super(factory, name, format);
             

@@ -9,6 +9,7 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.game.ClientboundAddPlayerPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.network.protocol.game.ClientboundLoginPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
@@ -32,6 +33,7 @@ import qouteall.imm_ptl.core.ducks.IEPlayerPositionLookS2CPacket;
 import qouteall.imm_ptl.core.network.IPNetworkAdapt;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.dimension.DimensionTypeSync;
+import qouteall.q_misc_util.my_util.LimitedLogger;
 
 import java.util.Map;
 import java.util.UUID;
@@ -66,12 +68,12 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
     }
     
     @Override
-    public Map getPlayerListEntries() {
+    public Map<UUID, PlayerInfo> getPlayerListEntries() {
         return playerInfoMap;
     }
-    
+
     @Override
-    public void setPlayerListEntries(Map value) {
+    public void setPlayerListEntries(Map<UUID, PlayerInfo> value) {
         playerInfoMap = value;
     }
     
@@ -131,6 +133,31 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
         
     }
     
+    private static final LimitedLogger missingPlayerInfoLogger = new LimitedLogger(20);
+    
+    @Shadow
+    public abstract PlayerInfo getPlayerInfo(UUID uniqueId);
+    
+    // a player-like entity whose tab-list entry was not sent (a Taterzens NPC seen through a portal from another
+    // dimension) is skipped, as later versions of Minecraft do, instead of failing on the missing profile
+    @Inject(
+        method = "handleAddPlayer(Lnet/minecraft/network/protocol/game/ClientboundAddPlayerPacket;)V",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V",
+            shift = At.Shift.AFTER
+        ),
+        cancellable = true
+    )
+    private void onHandleAddPlayer(ClientboundAddPlayerPacket packet, CallbackInfo ci) {
+        if (getPlayerInfo(packet.getPlayerId()) == null) {
+            missingPlayerInfoLogger.log("Skipped adding player %s (entity %d) without player info".formatted(
+                packet.getPlayerId(), packet.getEntityId()
+            ));
+            ci.cancel();
+        }
+    }
+    
     private boolean isReProcessingPassengerPacket;
     
     @Inject(
@@ -161,7 +188,7 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
         }
     }
     
-    // for debug
+    // vanilla ignores data for an entity the client does not have (it left tracking a moment before); debug only
     @Redirect(
         method = "handleSetEntityData(Lnet/minecraft/network/protocol/game/ClientboundSetEntityDataPacket;)V",
         at = @At(
@@ -172,7 +199,7 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
     private Entity redirectGetEntityById(ClientLevel clientWorld, int id) {
         Entity entity = clientWorld.getEntity(id);
         if (entity == null) {
-            Helper.err("missing entity for data tracking " + clientWorld + id);
+            Helper.dbg("missing entity for data tracking " + clientWorld + id);
         }
         return entity;
     }

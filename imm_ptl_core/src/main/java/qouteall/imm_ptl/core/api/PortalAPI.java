@@ -79,19 +79,19 @@ public class PortalAPI {
     }
     
     public static <T extends Portal> T createReversePortal(T portal) {
-        return (T) PortalManipulation.createReversePortal(
-            portal, (EntityType<? extends Portal>) portal.getType()
-        );
+        @SuppressWarnings("unchecked")
+        EntityType<T> entityType = (EntityType<T>) portal.getType();
+        return PortalManipulation.createReversePortal(portal, entityType);
     }
-    
+
     public static <T extends Portal> T createFlippedPortal(T portal) {
-        return (T) PortalManipulation.createFlippedPortal(
-            portal, (EntityType<? extends Portal>) portal.getType()
-        );
+        @SuppressWarnings("unchecked")
+        EntityType<T> entityType = (EntityType<T>) portal.getType();
+        return PortalManipulation.createFlippedPortal(portal, entityType);
     }
-    
+
     public static <T extends Portal> T copyPortal(Portal portal, EntityType<T> entityType) {
-        return (T) PortalManipulation.copyPortal(portal, (EntityType<Portal>) entityType);
+        return PortalManipulation.copyPortal(portal, entityType);
     }
     
     public static void addGlobalPortal(

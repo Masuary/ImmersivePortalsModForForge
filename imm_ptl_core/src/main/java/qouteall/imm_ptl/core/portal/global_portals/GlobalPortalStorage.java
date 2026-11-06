@@ -1,7 +1,6 @@
 package qouteall.imm_ptl.core.portal.global_portals;
 
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
@@ -19,6 +18,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.commons.lang3.Validate;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
@@ -234,7 +234,7 @@ public class GlobalPortalStorage extends SavedData {
     
     private static Portal readPortalFromTag(Level currWorld, CompoundTag compoundTag) {
         ResourceLocation entityId = new ResourceLocation(compoundTag.getString("entity_type"));
-        EntityType<?> entityType = Registry.ENTITY_TYPE.get(entityId);
+        EntityType<?> entityType = ForgeRegistries.ENTITIES.getValue(entityId);
         
         Entity e = entityType.create(currWorld);
         e.load(compoundTag);

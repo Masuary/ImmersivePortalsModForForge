@@ -6,6 +6,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import qouteall.q_misc_util.MiscHelper;
 
 import java.util.Random;
 
@@ -130,7 +131,7 @@ public class ErrorTerrainComposition {
         );
         if (funcValue > splitPoint) {
             if (((int) funcValue) % 37 == 0) {
-                Block randomBlock = Registry.BLOCK.getRandom(new Random(
+                Block randomBlock = MiscHelper.getServer().registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY).getRandom(new Random(
                     LinearCongruentialGenerator.next(worldX, LinearCongruentialGenerator.next(worldY, worldZ))
                 )).get().value();
                 //player should not get beacon so easily

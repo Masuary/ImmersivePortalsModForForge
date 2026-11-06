@@ -104,7 +104,7 @@ public abstract class MixinChunkMap_C implements IEThreadedAnvilChunkStorage {
      * @reason make mod incompatibility fail fast
      */
     @Overwrite
-    public void playerLoadedChunk( //TODO @Nick1st Make this usefull again
+    private void playerLoadedChunk( //TODO @Nick1st Make this usefull again
         ServerPlayer player, MutableObject<ClientboundLevelChunkWithLightPacket> cachedDataPacket, LevelChunk chunk
     ) {
         //chunk data packets will be sent on ChunkDataSyncManager

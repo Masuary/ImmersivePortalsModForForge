@@ -28,9 +28,17 @@ import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.my_util.LimitedLogger;
 
 import java.util.List;
+import java.util.WeakHashMap;
 
 public class BlockManipulationServer {
     private static final LimitedLogger rejectionLogger = new LimitedLogger(100);
+    // vanilla's own threshold for a block mined since START_DESTROY_BLOCK (ServerPlayerGameMode#handleBlockBreakAction)
+    private static final float MIN_MINED_PROGRESS = 0.7F;
+    
+    private record MiningStart(ResourceKey<Level> dimension, BlockPos pos, int tick) {
+    }
+    
+    private static final WeakHashMap<ServerPlayer, MiningStart> miningStarts = new WeakHashMap<>();
     
     public static void processBreakBlock(
         ResourceKey<Level> dimension,
@@ -48,21 +56,46 @@ public class BlockManipulationServer {
         }
     }
     
+    // a remote break finishes like a vanilla one: at once when instant, else only after the block was mined long enough
+    // since its START_DESTROY_BLOCK (a client sending STOP_DESTROY_BLOCK alone could instant-mine through a portal)
     private static boolean shouldFinishMining(
         ResourceKey<Level> dimension,
         ServerboundPlayerActionPacket packet,
         ServerPlayer player
-    
     ) {
-        if (packet.getAction() == ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK) {
-            return canInstantMine(
-                MiscHelper.getServer().getLevel(dimension),
-                player,
-                packet.getPos()
-            );
-        }
-        else {
-            return packet.getAction() == ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK;
+        ServerLevel world = MiscHelper.getServer().getLevel(dimension);
+        BlockPos pos = packet.getPos();
+        switch (packet.getAction()) {
+            case START_DESTROY_BLOCK -> {
+                if (canInstantMine(world, player, pos)) {
+                    miningStarts.remove(player);
+                    return true;
+                }
+                miningStarts.put(player, new MiningStart(dimension, pos.immutable(), player.server.getTickCount()));
+                return false;
+            }
+            case STOP_DESTROY_BLOCK -> {
+                MiningStart start = miningStarts.remove(player);
+                if (start == null || start.dimension() != dimension || !start.pos().equals(pos)) {
+                    rejectionLogger.log("Rejected cross portal block breaking that was not started " + player);
+                    sendBreakAck(dimension, packet, player, "not started");
+                    return false;
+                }
+                int minedTicks = player.server.getTickCount() - start.tick();
+                if (world.getBlockState(pos).getDestroyProgress(player, world, pos) * (minedTicks + 1) < MIN_MINED_PROGRESS) {
+                    rejectionLogger.log("Rejected cross portal block breaking that was too fast " + player);
+                    sendBreakAck(dimension, packet, player, "mined too fast");
+                    return false;
+                }
+                return true;
+            }
+            case ABORT_DESTROY_BLOCK -> {
+                miningStarts.remove(player);
+                return false;
+            }
+            default -> {
+                return false;
+            }
         }
     }
     

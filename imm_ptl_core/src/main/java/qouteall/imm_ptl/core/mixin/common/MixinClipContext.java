@@ -80,9 +80,7 @@ public abstract class MixinClipContext implements IERayTraceContext {
                 }
             }
             else if (block == ClipContext.Block.COLLIDER) {
-                cir.setReturnValue(IPRegistry.NETHER_PORTAL_BLOCK.get().getShape(
-                    blockState, blockView, blockPos, collisionContext
-                ));
+                cir.setReturnValue(blockState.getShape(blockView, blockPos, collisionContext));
             }
         }
     }

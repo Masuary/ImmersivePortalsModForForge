@@ -19,11 +19,13 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.PacketDistributor;
 import org.apache.commons.lang3.Validate;
@@ -742,8 +744,40 @@ public class Portal extends Entity implements PortalLike, IPEntityEventListenabl
         return IPMessage.INSTANCE.toVanillaPacket(new Spawn_Entity(this), NetworkDirection.PLAY_TO_CLIENT);
     }
     
+    /**
+     * Another mod removed the level portals lead to (Vault Hunters deletes a finished vault's level): they go now
+     * instead of failing their validity check later.
+     */
+    public static void removePortalsInto(ServerLevel removedLevel) {
+        for (ServerLevel level : removedLevel.getServer().getAllLevels()) {
+            for (Portal portal : level.getEntities(EntityTypeTest.forClass(Portal.class),
+                portal -> portal.dimensionTo == removedLevel.dimension())) {
+                // runs inside the other mod's level removal: one failing portal must not stop it
+                try {
+                    Helper.log("Removed portal %s: its destination level was removed".formatted(portal));
+                    portal.remove(RemovalReason.KILLED);
+                }
+                catch (RuntimeException exception) {
+                    Helper.err("Could not remove portal %s: %s".formatted(portal, exception));
+                }
+            }
+        }
+    }
+    
+    // a portal saved in a chunk that was unloaded when its destination level was removed
+    public static void dropIfDestinationMissing(EntityJoinWorldEvent event) {
+        if (event.getEntity() instanceof Portal portal && event.getWorld() instanceof ServerLevel level
+            && level.getServer().getLevel(portal.dimensionTo) == null) {
+            Helper.log("Dropped portal %s: its destination level is gone".formatted(portal));
+            event.setCanceled(true);
+        }
+    }
+    
     @Override
     public boolean broadcastToPlayer(ServerPlayer spectator) {
+        if (PortalDimensionFilter.isPortalDisabled(level.dimension(), dimensionTo)) {
+            return false;
+        }
         if (specificPlayerId == null) {
             return true;
         }

@@ -25,12 +25,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
@@ -39,8 +37,9 @@ import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.mixin.IEVaultListenersLogic;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Opening;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Placement;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.WindowSize;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules.VaultPortalRole;
-import qouteall.q_misc_util.dimension.DynamicDimensionsImpl;
+import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
@@ -101,8 +100,6 @@ public final class VaultPortalLinks {
 
     static void init() {
         MinecraftForge.EVENT_BUS.addListener(VaultPortalLinks::onServerTick);
-        DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(VaultPortalLinks::onLevelRemoved);
-        MinecraftForge.EVENT_BUS.addListener(VaultPortalLinks::onEntityJoinWorld);
         MinecraftForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> {
             pendingLinks.clear();
             unlinkableVaults.clear();
@@ -164,41 +161,12 @@ public final class VaultPortalLinks {
         boolean vaultExists = ServerVaults.get(portal.getVaultId()).isPresent();
         boolean frameIntact = portal.getRole() != VaultPortalRole.ENTRY
             || portal.getVaultId().equals(getVaultId(portal.level, portal.getVaultHuntersBlock()));
-        if (!vaultExists || !frameIntact) {
+        boolean isTurnedOff = PortalDimensionFilter.isPortalDisabled(portal.level.dimension(), portal.dimensionTo);
+        if (!vaultExists || !frameIntact || isTurnedOff) {
             LOGGER.info("Removed the {} window of vault {} at {}: {}", portal.getRole(), portal.getVaultId(),
-                portal.getVaultHuntersBlock(), vaultExists ? "the frame is gone" : "the vault is gone");
+                portal.getVaultHuntersBlock(), !vaultExists ? "the vault is gone"
+                    : !frameIntact ? "the frame is gone" : "portals are turned off there (portalDisabledDimensions)");
             portal.remove(Entity.RemovalReason.KILLED);
-        }
-    }
-
-    // Vault Hunters deletes a finished vault's level before the windows' own check sees the vault gone
-    private static void onLevelRemoved(ServerLevel removedLevel) {
-        if (!VaultRules.isVaultLevel(removedLevel.dimension().location())) {
-            return;
-        }
-        for (ServerLevel level : removedLevel.getServer().getAllLevels()) {
-            for (VaultPortal portal : level.getEntities(EntityTypeTest.forClass(VaultPortal.class),
-                portal -> portal.dimensionTo == removedLevel.dimension())) {
-                // runs inside Vault Hunters' level deletion: one failing window must not stop it
-                try {
-                    LOGGER.info("Removed the {} window of vault {} at {}: the vault level was deleted",
-                        portal.getRole(), portal.getVaultId(), portal.getVaultHuntersBlock());
-                    portal.remove(Entity.RemovalReason.KILLED);
-                }
-                catch (RuntimeException exception) {
-                    LOGGER.error("Could not remove the window {}", portal, exception);
-                }
-            }
-        }
-    }
-
-    // windows saved in a chunk that was unloaded when their vault closed load without a destination
-    private static void onEntityJoinWorld(EntityJoinWorldEvent event) {
-        if (event.getEntity() instanceof VaultPortal portal && event.getWorld() instanceof ServerLevel level
-            && level.getServer().getLevel(portal.dimensionTo) == null) {
-            LOGGER.info("Dropped the {} window of vault {} at {}: its vault is gone",
-                portal.getRole(), portal.getVaultId(), portal.getVaultHuntersBlock());
-            event.setCanceled(true);
         }
     }
 
@@ -309,6 +277,9 @@ public final class VaultPortalLinks {
         if (world == null || worldManager == null || !hub.isPositionEntityTicking(link.touchedBlock())) {
             return LinkAttempt.WAITING;
         }
+        if (PortalDimensionFilter.isPortalDisabled(hub.dimension(), world.dimension())) {
+            return impossible(vaultId, "portals are turned off there (portalDisabledDimensions)");
+        }
         PortalLogic portalLogic = worldManager.getOptional(WorldManager.PORTAL_LOGIC).orElse(null);
         if (!(portalLogic instanceof ClassicPortalLogic classicPortalLogic)) {
             return impossible(vaultId, "its portal logic is not Vault Hunters' classic one");
@@ -339,15 +310,21 @@ public final class VaultPortalLinks {
         }
 
         Direction creatorSide = getSideOf(frameOpening, link.touchPosition());
+        WindowSize fittedEntry = VaultPortalGeometry.fitEntryWindow(frameOpening, entranceOpening, (column, row) -> isFree(
+            world, VaultPortalGeometry.getRoomCell(frameOpening, entranceOpening, arrival, column, row)
+        ));
         for (Direction viewerSide : new Direction[]{creatorSide, creatorSide.getOpposite()}) {
-            Placement entry = VaultPortalGeometry.place(frameOpening, viewerSide, entranceOpening, arrival);
+            Placement entry = fittedEntry == null
+                ? VaultPortalGeometry.place(frameOpening, viewerSide, entranceOpening, arrival)
+                : VaultPortalGeometry.placeFittedEntry(frameOpening, viewerSide, entranceOpening, arrival, fittedEntry);
             McHelper.spawnServerEntity(VaultPortal.create(hub, VaultPortalRole.ENTRY, vaultId, frameBlock, entry, world.dimension()));
         }
         Placement exit = VaultPortalGeometry.place(entranceOpening, arrival, frameOpening, creatorSide);
         McHelper.spawnServerEntity(VaultPortal.create(world, VaultPortalRole.EXIT, vaultId, entranceBlock, exit, hub.dimension()));
-        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {}",
+        LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {})",
             frameOpening.min(), frameOpening.max(), hub.dimension().location(),
-            entranceOpening.min(), entranceOpening.max(), vaultId);
+            entranceOpening.min(), entranceOpening.max(), vaultId,
+            fittedEntry == null ? "over the smaller opening" : fittedEntry.width() + " x " + fittedEntry.height());
         return LinkAttempt.LINKED;
     }
 
@@ -378,8 +355,11 @@ public final class VaultPortalLinks {
     }
 
     private static boolean isWalkable(ServerLevel world, BlockPos feet) {
-        return world.getBlockState(feet).getCollisionShape(world, feet).isEmpty()
-            && world.getBlockState(feet.above()).getCollisionShape(world, feet.above()).isEmpty();
+        return isFree(world, feet) && isFree(world, feet.above());
+    }
+
+    private static boolean isFree(ServerLevel world, BlockPos pos) {
+        return world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
     }
 
     // the connected portal blocks of this vault around the touched one; the frame blocks' axis is the plane's width

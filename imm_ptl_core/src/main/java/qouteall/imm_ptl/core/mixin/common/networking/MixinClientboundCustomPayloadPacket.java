@@ -50,10 +50,10 @@ public class MixinClientboundCustomPayloadPacket implements IECustomPayloadPacke
         ResourceKey<Level> dimension = DimId.readWorldId(data, true);
 
         int packetId = data.readInt();
-        Packet packet = PacketRedirection.createPacketById(packetId, data);
+        Packet<?> packet = PacketRedirection.createPacketById(packetId, data);
 
         ip_redirectedDimension = dimension;
-        ip_redirectedPacket = (Packet<ClientGamePacketListener>) packet;
+        ip_redirectedPacket = PacketRedirection.castToClientGamePacket(packet);
     }
     
     @Inject(

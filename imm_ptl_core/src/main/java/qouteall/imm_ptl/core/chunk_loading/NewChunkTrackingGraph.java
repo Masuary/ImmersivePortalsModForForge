@@ -6,6 +6,7 @@ import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.Validate;
@@ -105,6 +106,13 @@ public class NewChunkTrackingGraph {
             = new ArrayList<>();
         public final ArrayList<ArrayDeque<PlayerWatchRecord>> distanceToPendingChunks =
             new ArrayList<>();
+        
+        // normally chunk loading will update following to an interval
+        // but if this is true, it will immediately update next tick
+        public boolean shouldUpdateImmediately = false;
+        
+        public int cameraEntityId = -1;
+        public long cameraChunk = Long.MIN_VALUE;
         
         public PerformanceLevel performanceLevel = PerformanceLevel.bad;
         
@@ -376,7 +384,13 @@ public class NewChunkTrackingGraph {
         
         long gameTime = McHelper.getOverWorldOnServer().getGameTime();
         McHelper.getCopiedPlayerList().forEach(player -> {
-            if (player.getId() % updateInterval == gameTime % updateInterval) {
+            PlayerInfo playerInfo = getPlayerInfo(player);
+            
+            // spread the player updates to different ticks
+            if (hasCameraMoved(player, playerInfo) || playerInfo.shouldUpdateImmediately ||
+                (player.getId() % updateInterval == gameTime % updateInterval)
+            ) {
+                playerInfo.shouldUpdateImmediately = false;
                 updateForPlayer(player);
             }
             flushPendingLoading(player);
@@ -386,6 +400,18 @@ public class NewChunkTrackingGraph {
         }
         
         MiscHelper.getServer().getProfiler().pop();
+    }
+    
+    // a camera entity that changed or entered another chunk is followed at once, not at the next periodic update
+    private static boolean hasCameraMoved(ServerPlayer player, PlayerInfo playerInfo) {
+        Entity camera = player.getCamera();
+        long cameraChunk = camera.chunkPosition().toLong();
+        if (camera.getId() == playerInfo.cameraEntityId && (camera == player || cameraChunk == playerInfo.cameraChunk)) {
+            return false;
+        }
+        playerInfo.cameraEntityId = camera.getId();
+        playerInfo.cameraChunk = cameraChunk;
+        return true;
     }
     
     public static void init() {
@@ -585,14 +611,19 @@ public class NewChunkTrackingGraph {
         ServerPlayer player,
         ChunkLoader chunkLoader
     ) {
-        getPlayerInfo(player).additionalChunkLoaders.add(chunkLoader);
+        PlayerInfo playerInfo = getPlayerInfo(player);
+        playerInfo.additionalChunkLoaders.add(chunkLoader);
+        playerInfo.shouldUpdateImmediately = true;
     }
     
+    /**
+     * NOTE it removes chunk loader by object reference, not by value equality
+     */
     public static void removePerPlayerAdditionalChunkLoader(
         ServerPlayer player,
         ChunkLoader chunkLoader
     ) {
-        getPlayerInfo(player).additionalChunkLoaders.remove(chunkLoader);
+        getPlayerInfo(player).additionalChunkLoaders.removeIf(c -> c == chunkLoader);
     }
     
     public static Set<ResourceKey<Level>> getVisibleDimensions(ServerPlayer player) {

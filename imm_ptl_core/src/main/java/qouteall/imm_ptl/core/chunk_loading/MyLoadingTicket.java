@@ -48,6 +48,12 @@ public class MyLoadingTicket {
     }
     
     public static void addTicketIfNotLoaded(ServerLevel world, ChunkPos chunkPos) {
+        if (!world.getServer().isRunning()) {
+            // important: don't add chunk ticket when server is saving
+            // https://github.com/iPortalTeam/ImmersivePortalsMod/issues/1455
+            return;
+        }
+        
         boolean isNewlyAdded = getRecord(world).add(chunkPos.toLong());
         if (isNewlyAdded) {
             getTicketManager(world).addRegionTicket(

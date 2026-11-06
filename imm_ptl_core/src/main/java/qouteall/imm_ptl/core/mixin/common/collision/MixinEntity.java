@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.mixin.common.collision;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -217,7 +218,10 @@ public abstract class MixinEntity implements IEEntity {
                 
                 Level destinationWorld = collidingPortal.getDestinationWorld();
                 
-                if (destinationWorld != null && destinationWorld.hasChunkAt(remoteLandingPos)) {
+                if (destinationWorld != null && destinationWorld.hasChunk(
+                    SectionPos.blockToSectionCoord(remoteLandingPos.getX()),
+                    SectionPos.blockToSectionCoord(remoteLandingPos.getZ())
+                )) {
                     BlockState result = destinationWorld.getBlockState(remoteLandingPos);
                     
                     if (!result.isAir()) {

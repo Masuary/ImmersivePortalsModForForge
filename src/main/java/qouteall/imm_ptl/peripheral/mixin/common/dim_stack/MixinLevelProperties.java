@@ -32,6 +32,7 @@ public class MixinLevelProperties {
         at = @At("RETURN"),
         cancellable = true
     )
+    @SuppressWarnings("deprecation")
     private static void onReadDataFromTag(
         Dynamic<Tag> dynamic,
         DataFixer dataFixer,

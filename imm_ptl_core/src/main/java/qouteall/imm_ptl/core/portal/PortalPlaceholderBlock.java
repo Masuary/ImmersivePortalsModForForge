@@ -57,6 +57,7 @@ public class PortalPlaceholderBlock extends Block {
         );
     }
     
+    @SuppressWarnings("deprecation")
     @Override
     public VoxelShape getShape(
         BlockState state, BlockGetter world, BlockPos blockPos, CollisionContext shapeContext
@@ -77,6 +78,7 @@ public class PortalPlaceholderBlock extends Block {
         builder.add(AXIS);
     }
     
+    @SuppressWarnings("deprecation")
     @Override
     public BlockState updateShape(
         BlockState thisState,
@@ -143,11 +145,13 @@ public class PortalPlaceholderBlock extends Block {
         return true;
     }
     
+    @SuppressWarnings("deprecation")
     @Override
     public RenderShape getRenderShape(BlockState blockState_1) {
         return RenderShape.INVISIBLE;
     }
-    
+
+    @SuppressWarnings("deprecation")
     @OnlyIn(Dist.CLIENT)
     @Override
     public float getShadeBrightness(

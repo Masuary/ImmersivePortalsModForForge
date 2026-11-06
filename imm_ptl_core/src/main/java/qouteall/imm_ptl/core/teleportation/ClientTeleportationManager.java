@@ -303,7 +303,8 @@ public class ClientTeleportationManager {
         else {
             ClientLevel toWorld = ClientWorldLoader.getWorld(toDimension);
             
-            changePlayerDimension(player, fromWorld, toWorld, destination);
+            // the server sends the feet position
+            changePlayerDimension(player, fromWorld, toWorld, destination.add(McHelper.getEyeOffset(player)));
         }
         
         moveStartPoint = null;

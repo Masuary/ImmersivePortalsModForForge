@@ -19,8 +19,8 @@ import java.lang.reflect.Method;
 
 public class RequiemCompat {
     private static boolean isRequiemPresent = false;
-    private static Class class_RequiemPlayer;
-    private static Class class_PossessionComponent;
+    private static Class<?> class_RequiemPlayer;
+    private static Class<?> class_PossessionComponent;
     private static Method method_asPossessor;
     private static Method method_getPossessedEntity;
     

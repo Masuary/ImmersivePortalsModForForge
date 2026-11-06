@@ -46,11 +46,13 @@ public class NormalSkylandGenerator extends DelegatedChunkGenerator {
         );
         
         // replace the noise setting
+        @SuppressWarnings("deprecation")
+        boolean disableMobGeneration = skylandSetting.disableMobGeneration();
         skylandSetting = new NoiseGeneratorSettings(
             END_NOISE_SETTINGS,
             skylandSetting.defaultBlock(), skylandSetting.defaultFluid(),
             skylandSetting.noiseRouter(), skylandSetting.surfaceRule(), skylandSetting.seaLevel(),
-            skylandSetting.disableMobGeneration(), skylandSetting.aquifersEnabled(),
+            disableMobGeneration, skylandSetting.aquifersEnabled(),
             skylandSetting.oreVeinsEnabled(), skylandSetting.useLegacyRandomSource()
         );
         

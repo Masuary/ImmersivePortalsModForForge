@@ -18,6 +18,7 @@ public class MixinEntitySection implements IEEntityTrackingSection {
     @Final
     private ClassInstanceMultiMap storage;
     
+    @SuppressWarnings("unchecked")
     @Override
     public void myForeach(EntityTypeTest type, Consumer action) {
         Collection collection = this.storage.find(type.getBaseClass());

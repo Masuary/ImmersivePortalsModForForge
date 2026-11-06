@@ -2,6 +2,7 @@ package qouteall.imm_ptl.core.portal.nether_portal;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -69,9 +70,9 @@ public class NetherPortalGeneration {
             Helper.err("Cannot find air cube within 32 blocks? " +
                 "Force placed portal. It will occupy normal blocks.");
             
-            foundAirCube = IntBox.getBoxByBasePointAndSize(
-                neededAreaSize,
-                mappedPosInOtherDimension
+            foundAirCube = IntBox.fromBasePointAndSize(
+                mappedPosInOtherDimension,
+                neededAreaSize
             );
         }
         return foundAirCube;
@@ -236,7 +237,7 @@ public class NetherPortalGeneration {
     private static final LimitedLogger limitedLogger = new LimitedLogger(300);
     
     public static boolean checkPortalGeneration(ServerLevel fromWorld, BlockPos startingPos) {
-        if (!fromWorld.hasChunkAt(startingPos)) {
+        if (!fromWorld.hasChunk(SectionPos.blockToSectionCoord(startingPos.getX()), SectionPos.blockToSectionCoord(startingPos.getZ()))) {
             Helper.log("Cancel Portal Generation Because Chunk Not Loaded");
             return false;
         }

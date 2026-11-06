@@ -466,6 +466,7 @@ public class McHelper {
         
         EntityTypeTest<T, T> typeFilter = EntityTypeTest.forClass(entityClass);
         
+        @SuppressWarnings("unchecked")
         EntitySectionStorage<Entity> cache =
             (EntitySectionStorage<Entity>) ((IELevelEntityGetterAdapter) entityLookup).getCache();
         
@@ -674,7 +675,9 @@ public class McHelper {
                 return ((ServerLevel) world).getAllEntities();
             }
             else {
-                return ((Iterable<Entity>) Collections.emptyList().iterator());
+                @SuppressWarnings("unchecked")
+                Iterable<Entity> emptyIterable = (Iterable<Entity>) Collections.emptyList().iterator();
+                return emptyIterable;
             }
         }
     }

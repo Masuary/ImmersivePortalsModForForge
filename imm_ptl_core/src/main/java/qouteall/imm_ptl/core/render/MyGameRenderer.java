@@ -291,7 +291,7 @@ public class MyGameRenderer {
         boolean bl2 = client.level.effects().isFoggyAt(Mth.floor(d), Mth.floor(e)) ||
             client.gui.getBossOverlay().shouldCreateWorldFog();
         
-        FogRenderer.setupFog(camera, FogRenderer.FogMode.FOG_TERRAIN, Math.max(g - 16.0F, 32.0F), bl2);
+        FogRenderer.setupFog(camera, FogRenderer.FogMode.FOG_TERRAIN, Math.max(g - 16.0F, 32.0F), bl2, 0.0F);
         FogRenderer.levelFogColor();
     }
     

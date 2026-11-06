@@ -1572,7 +1572,7 @@ public class PortalCommand {
                     }
                     airCube = airCube.getSubBoxInCenter(roomAreaSize);
                     
-                    fillRoomFrame(world, airCube, getRandomBlock());
+                    fillRoomFrame(world, airCube, getRandomBlock(world));
                     roomAreaList.add(airCube);
                 }))
             ),
@@ -1618,11 +1618,11 @@ public class PortalCommand {
         ));
     }
     
-    private static BlockState getRandomBlock() {
+    private static BlockState getRandomBlock(ServerLevel world) {
         Random random = new Random();
-        
+
         for (; ; ) {
-            Block block = Registry.BLOCK.getRandom(random).get().value();
+            Block block = world.registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY).getRandom(random).get().value();
             BlockState state = block.defaultBlockState();
             Material material = state.getMaterial();
             if (material.blocksMotion() && material.getPushReaction() == PushReaction.NORMAL

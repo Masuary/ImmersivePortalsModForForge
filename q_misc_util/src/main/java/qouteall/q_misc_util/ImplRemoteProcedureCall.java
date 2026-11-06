@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.network.NetworkDirection;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.commons.lang3.Validate;
 import qouteall.q_misc_util.forge.networking.Message;
 import qouteall.q_misc_util.forge.networking.Remote_CtS;
@@ -50,16 +51,14 @@ public class ImplRemoteProcedureCall {
     
     private static final ConcurrentHashMap<String, Method> methodCache = new ConcurrentHashMap<>();
     
-    private static final ImmutableMap<Class, BiConsumer<FriendlyByteBuf, Object>> serializerMap;
+    private static final ImmutableMap<Class<?>, BiConsumer<FriendlyByteBuf, Object>> serializerMap;
     private static final ImmutableMap<Type, Function<FriendlyByteBuf, Object>> deserializerMap;
-    
-    private static final JsonParser jsonParser = new JsonParser();
-    
+
     static {
         GsonBuilder gsonBuilder = new GsonBuilder();
         gson = gsonBuilder.create();
         
-        serializerMap = ImmutableMap.<Class, BiConsumer<FriendlyByteBuf, Object>>builder()
+        serializerMap = ImmutableMap.<Class<?>, BiConsumer<FriendlyByteBuf, Object>>builder()
             .put(ResourceLocation.class, (buf, o) -> buf.writeResourceLocation(((ResourceLocation) o)))
             .put(ResourceKey.class, (buf, o) -> buf.writeResourceLocation(((ResourceKey) o).location()))
             .put(BlockPos.class, (buf, o) -> buf.writeBlockPos(((BlockPos) o)))
@@ -70,8 +69,8 @@ public class ImplRemoteProcedureCall {
                 buf.writeDouble(vec.z);
             })
             .put(UUID.class, (buf, o) -> buf.writeUUID(((UUID) o)))
-            .put(Block.class, (buf, o) -> serializeByCodec(buf, Registry.BLOCK.byNameCodec(), o))
-            .put(Item.class, (buf, o) -> serializeByCodec(buf, Registry.ITEM.byNameCodec(), o))
+            .put(Block.class, (buf, o) -> serializeByCodec(buf, ForgeRegistries.BLOCKS.getCodec(), o))
+            .put(Item.class, (buf, o) -> serializeByCodec(buf, ForgeRegistries.ITEMS.getCodec(), o))
             .put(BlockState.class, (buf, o) -> serializeByCodec(buf, BlockState.CODEC, o))
             .put(ItemStack.class, (buf, o) -> serializeByCodec(buf, ItemStack.CODEC, o))
             .put(CompoundTag.class, (buf, o) -> buf.writeNbt(((CompoundTag) o)))
@@ -97,8 +96,8 @@ public class ImplRemoteProcedureCall {
                 new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble())
             )
             .put(UUID.class, buf -> buf.readUUID())
-            .put(Block.class, buf -> deserializeByCodec(buf, Registry.BLOCK.byNameCodec()))
-            .put(Item.class, buf -> deserializeByCodec(buf, Registry.ITEM.byNameCodec()))
+            .put(Block.class, buf -> deserializeByCodec(buf, ForgeRegistries.BLOCKS.getCodec()))
+            .put(Item.class, buf -> deserializeByCodec(buf, ForgeRegistries.ITEMS.getCodec()))
             .put(BlockState.class, buf -> deserializeByCodec(buf, BlockState.CODEC))
             .put(ItemStack.class, buf -> deserializeByCodec(buf, ItemStack.CODEC))
             .put(CompoundTag.class, buf -> buf.readNbt())
@@ -106,10 +105,10 @@ public class ImplRemoteProcedureCall {
             .build();
     }
     
-    private static Object deserializeByCodec(FriendlyByteBuf buf, Codec codec) {
+    private static Object deserializeByCodec(FriendlyByteBuf buf, Codec<?> codec) {
         String jsonString = readStringNonClientOnly(buf);
-        JsonElement jsonElement = jsonParser.parse(jsonString);
-        
+        JsonElement jsonElement = JsonParser.parseString(jsonString);
+
         return codec.parse(JsonOps.INSTANCE, jsonElement).getOrThrow(
             false, e -> {throw new RuntimeException(e.toString());}
         );
@@ -148,13 +147,16 @@ public class ImplRemoteProcedureCall {
         serializer.accept(buf, object);
     }
     
-    private static void serializeByCodec(FriendlyByteBuf buf, Codec codec, Object object) {
-        JsonElement result = (JsonElement) codec.encodeStart(JsonOps.INSTANCE, object).getOrThrow(
+    private static void serializeByCodec(FriendlyByteBuf buf, Codec<?> codec, Object object) {
+        @SuppressWarnings("unchecked")
+        Codec<Object> typedCodec = (Codec<Object>) codec;
+
+        JsonElement result = typedCodec.encodeStart(JsonOps.INSTANCE, object).getOrThrow(
             false, e -> {
                 throw new RuntimeException(e.toString());
             }
         );
-        
+
         String jsonString = gson.toJson(result);
         buf.writeUtf(jsonString);
     }

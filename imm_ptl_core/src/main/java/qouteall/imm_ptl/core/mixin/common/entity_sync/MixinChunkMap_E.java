@@ -70,6 +70,7 @@ public abstract class MixinChunkMap_E implements IEThreadedAnvilChunkStorage {
         });
     }
     
+    @Deprecated
     @Override
     public void ip_onPlayerDisconnected(ServerPlayer player) {
         entityMap.values().forEach(trackedEntity -> {

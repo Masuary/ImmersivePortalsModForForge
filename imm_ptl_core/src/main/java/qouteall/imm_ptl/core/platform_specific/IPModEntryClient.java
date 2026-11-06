@@ -16,19 +16,20 @@ import qouteall.imm_ptl.core.compat.IPModCompatibilityWarning;
 import qouteall.imm_ptl.core.compat.iris_compatibility.ExperimentalIrisPortalRenderer;
 import qouteall.imm_ptl.core.compat.iris_compatibility.IrisInterface;
 import qouteall.imm_ptl.core.compat.sodium_compatibility.SodiumInterface;
+import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.render.*;
 import qouteall.imm_ptl.core.teleportation.ClientTeleportationManager;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.MyTaskList;
 
-import java.util.Arrays;
+import java.util.stream.Stream;
 
 public class IPModEntryClient {
 
     @SubscribeEvent
     public static void initPortalRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        
-        Arrays.stream(new EntityType<?>[]{
+
+        Stream.<EntityType<? extends Portal>>of(
                 IPRegistry.PORTAL.get(),
                 IPRegistry.NETHER_PORTAL_NEW.get(),
                 IPRegistry.END_PORTAL.get(),
@@ -39,12 +40,12 @@ public class IPModEntryClient {
                 IPRegistry.END_FLOOR_PORTAL.get(),
                 IPRegistry.GENERAL_BREAKABLE_PORTAL.get(),
                 IPRegistry.VAULT_PORTAL.get()
-        }).peek(
+        ).peek(
             Validate::notNull
         ).forEach(
             entityType -> event.registerEntityRenderer(
                 entityType,
-                (EntityRendererProvider) PortalEntityRenderer::new
+                PortalEntityRenderer::new
             )
         );
 

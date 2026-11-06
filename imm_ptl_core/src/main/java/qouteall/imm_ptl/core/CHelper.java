@@ -136,7 +136,9 @@ public class CHelper {
     
     public static Iterable<Entity> getWorldEntityList(Level world) {
         if (!(world instanceof ClientLevel)) {
-            return (Iterable<Entity>) Collections.emptyList().iterator();
+            @SuppressWarnings("unchecked")
+            Iterable<Entity> emptyIterable = (Iterable<Entity>) Collections.emptyList().iterator();
+            return emptyIterable;
         }
         
         ClientLevel clientWorld = (ClientLevel) world;

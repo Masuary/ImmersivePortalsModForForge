@@ -10,6 +10,7 @@ import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -208,7 +209,7 @@ public class CustomPortalGeneration {
             }
         }
         
-        if (!world.hasChunkAt(startPos)) {
+        if (!world.hasChunk(SectionPos.blockToSectionCoord(startPos.getX()), SectionPos.blockToSectionCoord(startPos.getZ()))) {
             Helper.log("Skip custom portal generation because chunk not loaded");
             return false;
         }

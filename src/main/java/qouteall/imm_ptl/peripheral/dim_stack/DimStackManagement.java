@@ -7,7 +7,6 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
@@ -22,6 +21,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.imm_ptl.core.portal.global_portals.VerticalConnectingPortal;
@@ -77,6 +77,7 @@ public class DimStackManagement {
         bedrockReplacementMap = newMap;
     }
     
+    @SuppressWarnings("deprecation")
     public static void onServerCreatedWorlds(MinecraftServer server) {
         if (dimStackToApply != null) {
             dimStackToApply.apply();
@@ -107,7 +108,7 @@ public class DimStackManagement {
             Helper.log(String.format(
                 "Bedrock Replacement %s %s",
                 world.dimension().location(),
-                replacement != null ? Registry.BLOCK.getKey(replacement.getBlock()) : "null"
+                replacement != null ? ForgeRegistries.BLOCKS.getKey(replacement.getBlock()) : "null"
             ));
         }
         bedrockReplacementMap = newMap;

@@ -4,6 +4,7 @@ import com.google.common.collect.Streams;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -34,6 +35,20 @@ public class ChunkVisibility {
             McHelper.getRenderDistanceOnServer(),
             true
         );
+    }
+    
+    // a player seeing the world through another entity (a spectated mob, Steam Rails' possessed conductor) also sees
+    // the chunks around that entity
+    private static Stream<ChunkLoader> cameraDirectLoader(ServerPlayer player) {
+        Entity camera = player.getCamera();
+        if (camera == player || camera.isRemoved()) {
+            return Stream.empty();
+        }
+        return Stream.of(new ChunkLoader(
+            new DimensionalChunkPos(camera.level.dimension(), camera.chunkPosition()),
+            McHelper.getRenderDistanceOnServer(),
+            true
+        ));
     }
     
     private static int getDirectLoadingDistance(int renderDistance, double distanceToPortal) {
@@ -192,6 +207,7 @@ public class ChunkVisibility {
         
         return Streams.concat(
             Stream.of(playerDirectLoader),
+            cameraDirectLoader(player),
             
             getNearbyPortals(
                 ((ServerLevel) player.level),

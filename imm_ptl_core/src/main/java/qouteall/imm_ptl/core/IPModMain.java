@@ -6,12 +6,14 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import qouteall.imm_ptl.core.chunk_loading.*;
 import qouteall.imm_ptl.core.compat.IPPortingLibCompat;
 import qouteall.imm_ptl.core.miscellaneous.GcMonitor;
+import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.PortalExtension;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.imm_ptl.core.teleportation.CollisionHelper;
 import qouteall.imm_ptl.core.teleportation.ServerTeleportationManager;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.LifecycleHack;
+import qouteall.q_misc_util.dimension.DynamicDimensionsImpl;
 
 public class IPModMain {
     
@@ -37,6 +39,9 @@ public class IPModMain {
         WorldInfoSender.init();
         
         GlobalPortalStorage.init();
+        
+        DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(Portal::removePortalsInto);
+        MinecraftForge.EVENT_BUS.addListener(Portal::dropIfDestinationMissing);
         
         EntitySync.init();
         

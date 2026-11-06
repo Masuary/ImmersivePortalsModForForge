@@ -6,8 +6,11 @@ import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.dimension.DimensionMisc;
+
+import java.util.List;
 
 public class IPConfig {
 
@@ -48,6 +51,7 @@ public class IPConfig {
     public static ForgeConfigSpec.BooleanValue enableModelDataFix;
     public static ForgeConfigSpec.BooleanValue editGlobalDimensionStack;
     public static ForgeConfigSpec.BooleanValue restoreMissingVanillaDimensions;
+    public static ForgeConfigSpec.ConfigValue<List<? extends String>> portalDisabledDimensions;
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
@@ -90,6 +94,9 @@ public class IPConfig {
         restoreMissingVanillaDimensions = builder
             .comment("Recreate the Nether and the End when the world has none (repairs worlds that lost them to DFU)")
             .define("restoreMissingVanillaDimensions", false);
+        portalDisabledDimensions = builder
+            .comment("Dimensions (\"namespace:path\") or whole namespaces (\"namespace\") where portals are turned off: a portal in or into one is not shown, loads no chunks and teleports nothing (\"the_vault\" turns off the see-through Vault Hunters portals)")
+            .defineList("portalDisabledDimensions", List.of(), PortalDimensionFilter::isValidEntry);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, builder.build());
     }
@@ -151,6 +158,7 @@ public class IPConfig {
 
         IPGlobal.editGlobalDimensionStack = editGlobalDimensionStack.get();
         DimensionMisc.restoreMissingVanillaDimensions = restoreMissingVanillaDimensions.get();
+        PortalDimensionFilter.configure(portalDisabledDimensions.get());
 
         Helper.log("IP Config Applied");
     }

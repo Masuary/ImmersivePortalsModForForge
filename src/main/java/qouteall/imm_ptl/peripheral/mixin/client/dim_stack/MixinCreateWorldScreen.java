@@ -156,10 +156,11 @@ public abstract class MixinCreateWorldScreen extends Screen implements IECreateW
     
     
     @Inject(
-        method = "lambda$tryApplyNewDataPacks$19",
-        at = @At("RETURN")
+        method = {"lambda$tryApplyNewDataPacks$19", "m_205413_"},
+        at = @At("RETURN"),
+        remap = false
     )
-    private void onTryingApplyNewDatapackLoading(ResourceManager resourceManager, DataPackConfig dataPackConfig, CallbackInfoReturnable<Pair> cir) {
+    private void onTryingApplyNewDatapackLoading(ResourceManager resourceManager, DataPackConfig dataPackConfig, CallbackInfoReturnable<Pair<PrimaryLevelData, RegistryAccess>> cir) {
         Pair<PrimaryLevelData, RegistryAccess> returnValue = cir.getReturnValue();
 
         PrimaryLevelData primaryLevelData = returnValue.getFirst();
