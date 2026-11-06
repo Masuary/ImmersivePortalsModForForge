@@ -1,5 +1,14 @@
 # Immersive Portals Mod for Forge
 
+> **This is Immersive Portals for Vault Hunters**, an unofficial fork of the Forge 1.18.2 version (1.4.20) made
+> compatible with Vault Hunters 3 Remastered: see-through vault portals that keep Vault Hunters' own rules, plus the
+> engine fixes the pack needs. All changes from upstream are listed in [CHANGELOG.md](CHANGELOG.md). Immersive Portals
+> is made by qouteall and kept alive on Forge by Nick1st; this fork stays under the Apache License 2.0. Please report
+> problems with this fork [here](https://github.com/Masuary/ImmersivePortalsModForForge/issues), not to the original
+> authors.
+>
+> Build: `./gradlew build` with JDK 17 (run `clean` as a separate command, and do not pass `--parallel`).
+
 It's a Minecraft mod that provides see-through portals and seamless teleportation. It also can create "Non-Euclidean" (Uneuclidean) space effect.
 
 ![immptl.png](https://i.loli.net/2021/09/30/chHMG45dsnZNqep.png)
