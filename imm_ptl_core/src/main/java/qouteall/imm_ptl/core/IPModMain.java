@@ -35,6 +35,7 @@ public class IPModMain {
         IPGlobal.chunkDataSyncManager = new ChunkDataSyncManager();
         
         NewChunkTrackingGraph.init();
+        LevelThreads.init();
         
         WorldInfoSender.init();
         

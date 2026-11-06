@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
@@ -46,6 +47,16 @@ public class EndPortalEntity extends Portal {
     }
     
     public static void onEndPortalComplete(ServerLevel world, Vec3 portalCenter) {
+        ServerLevel endWorld = MiscHelper.getServer().getLevel(Level.END);
+        if (endWorld == null) {
+            completeEndPortal(world, portalCenter);
+        }
+        else {
+            LevelThreads.runOwning(() -> completeEndPortal(world, portalCenter), world, endWorld);
+        }
+    }
+    
+    private static void completeEndPortal(ServerLevel world, Vec3 portalCenter) {
         if (IPGlobal.endPortalMode == IPGlobal.EndPortalMode.normal) {
             generateClassicalEndPortal(world, new Vec3(0, 120, 0), portalCenter);
         }
@@ -224,7 +235,7 @@ public class EndPortalEntity extends Portal {
     private static void generateObsidianPlatform() {
         ServerLevel endWorld = MiscHelper.getServer().getLevel(Level.END);
         
-        ServerLevel.makeObsidianPlatform(endWorld);
+        LevelThreads.runOwning(() -> ServerLevel.makeObsidianPlatform(endWorld), endWorld);
     }
     
     @Override

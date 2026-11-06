@@ -4,6 +4,33 @@ Unofficial fork of [Immersive Portals for Forge](https://github.com/iPortalTeam/
 branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible with Vault Hunters 3 Remastered. Changes
 below are relative to upstream 1.4.20.
 
+## 1.4.20-vh3r.2
+
+Built for the same pack as 1.4.20-vh3r.1 (Minecraft 1.18.2, Forge 40.2, Vault Hunters 3 Remastered 3.0.1). The network
+protocol is unchanged (`1.0-vh3r1`), so vh3r.1 and vh3r.2 servers and clients can still join each other, but update
+both: the vault ticking change works on the server, the buffer fix on the client.
+
+### Vaults tick in parallel again
+
+- Vault levels tick on Vault Hunters' own threads again, next to the rest of the server, as they do without Immersive
+  Portals. In 1.4.20-vh3r.1 every vault ticked on the main server thread: each busy vault cost about 3 to 4 ms of the
+  50 ms tick budget, so a server ran out of tick time at roughly 8 to 10 busy vaults.
+- Fixed the deadlock that 1.4.20-vh3r.1 avoided that way: something pushed into a portal inside a vault (an item flying
+  into a portal made with a command, or a player shoved into a vault window by a piston) could freeze the whole server.
+  Portal collision inside a vault never waits for another dimension any more: such an entity stops at the portal, as at
+  a portal whose other side is not loaded. Crossings into and out of vaults were already refused for everything except
+  players walking through.
+- Chunk loading, portal and teleport bookkeeping are safe for dimensions that tick on other threads; work that touches
+  another dimension (bound portal clusters, breakable portal pairs, the End platform) runs on the main thread at the end
+  of the tick.
+
+### Client
+
+- Fixed: chunk mesh buffers leaked whenever a dimension was unloaded (for example a vault after leaving it). Over a
+  session fewer and fewer buffers were left, chunk updates slowed down, and every dimension seen through a portal kept a
+  CPU thread busy waiting for one (several cores on a test PC). Buffers now return to the shared pool, and a renderer
+  waiting for one sleeps until one is free.
+
 ## 1.4.20-vh3r.1
 
 Built for Minecraft 1.18.2, Forge 40.2, Vault Hunters 3 Remastered 3.0.1 (`the_vault` 1.18.2-21.6.1-remastered.6956).

@@ -8,14 +8,17 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.render.optimization.SharedBlockMeshBuffers;
+import qouteall.imm_ptl.core.render.optimization.WaitableSharedQueue;
 
 import java.util.Queue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Mixin(ChunkRenderDispatcher.class)
 public abstract class MixinChunkRenderDispatcher_Optimization {
@@ -50,6 +53,9 @@ public abstract class MixinChunkRenderDispatcher_Optimization {
     @Shadow
     @Final
     private Executor executor;
+    
+    @Unique
+    private final AtomicBoolean ip_isWaitingForBuffer = new AtomicBoolean(false);
     
 //    @Redirect( //TODO Reenable
 //        method = "<init>",
@@ -138,13 +144,36 @@ public abstract class MixinChunkRenderDispatcher_Optimization {
             }
         }
         else {
-            mailbox.tell(this::runTask);
             // in vanilla, when a task finishes it will call runTask again
             // when there is no buffer, there must be other tasks running and the runTask will trigger later
-            // but with shared buffers, the buffers may be taken by other dimensions.
+            // but with shared buffers, the buffers may be taken by other dimensions: wait until one comes back
+            if (bufferQueue instanceof WaitableSharedQueue<ChunkBufferBuilderPack> sharedBuffers
+                && ip_isWaitingForBuffer.compareAndSet(false, true)) {
+                sharedBuffers.waitForElement(() -> {
+                    ip_isWaitingForBuffer.set(false);
+                    mailbox.tell(this::runTask);
+                });
+            }
             
             // exit runTasks
             return true;
+        }
+    }
+    
+    // a closed mailbox drops the tasks that return the buffers still in use, and they are shared by other dimensions
+    @Redirect(
+        method = "dispose",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/util/thread/ProcessorMailbox;close()V"
+        )
+    )
+    private void redirectCloseOnDispose(ProcessorMailbox<Runnable> disposedMailbox) {
+        if (freeBuffers instanceof WaitableSharedQueue) {
+            SharedBlockMeshBuffers.onDispatcherDisposed((ChunkRenderDispatcher) (Object) this);
+        }
+        else {
+            disposedMailbox.close();
         }
     }
     

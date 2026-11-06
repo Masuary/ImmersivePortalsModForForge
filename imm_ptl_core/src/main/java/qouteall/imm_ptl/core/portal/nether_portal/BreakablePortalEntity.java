@@ -17,6 +17,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.Validate;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.platform_specific.IPRegistry;
 import qouteall.imm_ptl.core.portal.Portal;
@@ -174,9 +175,24 @@ public abstract class BreakablePortalEntity extends Portal {
         if (!isPortalIntactOnThisSide()) {
             markShouldBreak();
         }
-        else if (!isPortalPaired()) {
-            Helper.err("Break portal because of abnormal pairing");
-            markShouldBreak();
+        else {
+            runOwningDestination(() -> {
+                if (!isRemoved() && !isPortalPaired()) {
+                    Helper.err("Break portal because of abnormal pairing");
+                    markShouldBreak();
+                }
+            });
+        }
+    }
+    
+    // the pairing lives in the destination level, which may tick on another thread right now
+    private void runOwningDestination(Runnable task) {
+        Level destinationWorld = getDestWorld();
+        if (destinationWorld == null) {
+            task.run();
+        }
+        else {
+            LevelThreads.runOwning(task, destinationWorld);
         }
     }
     
@@ -225,6 +241,10 @@ public abstract class BreakablePortalEntity extends Portal {
             return;
         }
         
+        runOwningDestination(this::markReversePortalShouldBreak);
+    }
+    
+    private void markReversePortalShouldBreak() {
         BreakablePortalEntity reversePortal = getReversePortal();
         if (reversePortal != null) {
             reversePortal.shouldBreakPortal = true;

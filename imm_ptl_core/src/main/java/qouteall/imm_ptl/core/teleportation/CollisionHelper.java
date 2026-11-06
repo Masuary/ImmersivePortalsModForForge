@@ -21,6 +21,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.mixin.common.collision.IEEntity_Collision;
@@ -169,7 +170,8 @@ public class CollisionHelper {
         }
         
         BlockPos otherSideCenter = new BlockPos(boxOtherSide.getCenter());
-        if (!destinationWorld.hasChunk(
+        // a level ticking on another thread cannot be read from here without waiting for that thread
+        if (!LevelThreads.isOwnedByCurrentThread(destinationWorld) || !destinationWorld.hasChunk(
             SectionPos.blockToSectionCoord(otherSideCenter.getX()),
             SectionPos.blockToSectionCoord(otherSideCenter.getZ())
         )) {

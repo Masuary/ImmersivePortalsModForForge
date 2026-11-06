@@ -1,8 +1,10 @@
 package qouteall.imm_ptl.core.portal;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.teleportation.ServerTeleportationManager;
 
 import javax.annotation.Nullable;
@@ -119,22 +121,36 @@ public class PortalExtension {
                 PortalExtension.get(flippedPortal).bindCluster = true;
             }
             
-            reversePortal = PortalManipulation.findReversePortal(portal);
-            
-            if (reversePortal != null) {
-                PortalExtension.get(reversePortal).bindCluster = true;
+            Level destinationWorld = portal.getDestWorld();
+            if (destinationWorld == null) {
+                updateDestinationSideClusterStatus(portal);
             }
-            
-            parallelPortal = PortalManipulation.findParallelPortal(portal);
-            
-            if (parallelPortal != null) {
-                PortalExtension.get(parallelPortal).bindCluster = true;
+            else {
+                LevelThreads.runOwning(() -> {
+                    if (!portal.isRemoved()) {
+                        updateDestinationSideClusterStatus(portal);
+                    }
+                }, destinationWorld);
             }
         }
         else {
             flippedPortal = null;
             reversePortal = null;
             parallelPortal = null;
+        }
+    }
+    
+    private void updateDestinationSideClusterStatus(Portal portal) {
+        reversePortal = PortalManipulation.findReversePortal(portal);
+        
+        if (reversePortal != null) {
+            PortalExtension.get(reversePortal).bindCluster = true;
+        }
+        
+        parallelPortal = PortalManipulation.findParallelPortal(portal);
+        
+        if (parallelPortal != null) {
+            PortalExtension.get(parallelPortal).bindCluster = true;
         }
     }
     

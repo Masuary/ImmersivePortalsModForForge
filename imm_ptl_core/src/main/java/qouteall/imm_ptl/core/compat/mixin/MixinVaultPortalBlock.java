@@ -17,13 +17,16 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalLinks;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPreviews;
+import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 
 @Mixin(VaultPortalBlock.class)
 public class MixinVaultPortalBlock {
 
     @Inject(method = "entityInside", at = @At("HEAD"), cancellable = true)
     private void ip_leaveCoveredBlocksToWindow(BlockState state, Level level, BlockPos pos, Entity entity, CallbackInfo ci) {
-        if (level instanceof ServerLevel serverLevel && entity instanceof ServerPlayer) {
+        // frames only exist outside vaults, and vault levels tick on Vault Hunters' pool
+        if (level instanceof ServerLevel serverLevel && entity instanceof ServerPlayer
+            && !VaultRules.isVaultLevel(level.dimension().location())) {
             VaultPreviews.resetDroppedFrameBeforeTouch(serverLevel, pos);
         }
         if (!level.isClientSide && VaultPortalLinks.isTouchLeftToWindow(entity, level, pos)) {

@@ -43,6 +43,7 @@ import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -96,8 +97,9 @@ public final class VaultPortalLinks {
     private static final Map<UUID, PendingLink> pendingLinks = new HashMap<>();
     // vaults whose frame or start room cannot carry a window (floor frames, odd templates): Vault Hunters' portal stays
     private static final Set<UUID> unlinkableVaults = new HashSet<>();
-    private static final WeakHashMap<ServerPlayer, Integer> lastWindowEntryTick = new WeakHashMap<>();
-    private static final WeakHashMap<ServerPlayer, Integer> lastInFrontOfWindowTick = new WeakHashMap<>();
+    // also touched by a player pushed into a portal block inside a vault level that ticks on Vault Hunters' pool
+    private static final Map<ServerPlayer, Integer> lastWindowEntryTick = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<ServerPlayer, Integer> lastInFrontOfWindowTick = Collections.synchronizedMap(new WeakHashMap<>());
     // the player whose crossing is running Vault Hunters' portal logic right now (server thread only)
     @Nullable
     private static ServerPlayer crossingPlayer;

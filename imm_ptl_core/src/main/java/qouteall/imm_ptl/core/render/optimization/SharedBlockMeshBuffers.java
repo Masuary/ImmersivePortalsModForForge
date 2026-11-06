@@ -1,16 +1,19 @@
 package qouteall.imm_ptl.core.render.optimization;
 
-import com.google.common.collect.Queues;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ChunkBufferBuilderPack;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
 import org.apache.commons.lang3.Validate;
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.q_misc_util.Helper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This optimization makes that different dimensions of ChunkRenderDispatcher
@@ -24,8 +27,29 @@ public class SharedBlockMeshBuffers {
     public static final ThreadLocal<Object> taskTemp =
         ThreadLocal.withInitial(() -> null);
     
+    // a disposed dispatcher's last compiles still hold buffers until their uploads run, which nobody else triggers
+    private static final long DISPOSED_DISPATCHER_DRAIN_NANOS = TimeUnit.SECONDS.toNanos(10);
+    private static final Map<ChunkRenderDispatcher, Long> disposedDispatcherDrainDeadlines = new HashMap<>();
+    
     public static void init() {
         IPGlobal.clientCleanupSignal.connect(SharedBlockMeshBuffers::cleanup);
+        IPGlobal.preGameRenderSignal.connect(SharedBlockMeshBuffers::drainDisposedDispatchers);
+    }
+    
+    public static void onDispatcherDisposed(ChunkRenderDispatcher dispatcher) {
+        dispatcher.uploadAllPendingUploads();
+        disposedDispatcherDrainDeadlines.put(dispatcher, System.nanoTime() + DISPOSED_DISPATCHER_DRAIN_NANOS);
+    }
+    
+    private static void drainDisposedDispatchers() {
+        if (disposedDispatcherDrainDeadlines.isEmpty()) {
+            return;
+        }
+        long now = System.nanoTime();
+        disposedDispatcherDrainDeadlines.entrySet().removeIf(entry -> {
+            entry.getKey().uploadAllPendingUploads();
+            return now - entry.getValue() > 0;
+        });
     }
     
     /**
@@ -82,7 +106,8 @@ public class SharedBlockMeshBuffers {
             System.gc();
         }
         
-        threadBuffers = Queues.newConcurrentLinkedQueue(list);
+        // a dispatcher's dispose() clears its buffer queue, which must not empty the pool of the other dimensions
+        threadBuffers = new WaitableSharedQueue<>(list);
     }
     
     private static void cleanup() {
@@ -90,6 +115,7 @@ public class SharedBlockMeshBuffers {
         if (threadBuffers != null) {
             threadBuffers = null;
         }
+        disposedDispatcherDrainDeadlines.clear();
     }
     
     public static String getDebugString() {

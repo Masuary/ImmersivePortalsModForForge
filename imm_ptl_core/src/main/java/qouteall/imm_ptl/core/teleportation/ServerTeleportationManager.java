@@ -55,7 +55,8 @@ import java.util.stream.Stream;
 
 public class ServerTeleportationManager {
     private Set<ServerPlayer> teleportingEntities = new HashSet<>();
-    private WeakHashMap<Entity, Long> lastTeleportGameTime = new WeakHashMap<>();
+    // read by portals ticking in levels on other threads (see LevelThreads); a WeakHashMap changes itself on reads
+    private final Map<Entity, Long> lastTeleportGameTime = Collections.synchronizedMap(new WeakHashMap<>());
     private final WeakHashMap<ServerPlayer, Tuple<ResourceKey<Level>, Long>> rejectedTravel = new WeakHashMap<>();
     public boolean isFiringMyChangeDimensionEvent = false;
     // true while an EntityTravelToDimensionEvent for a portal crossing is posted, to tell it from a vanilla change

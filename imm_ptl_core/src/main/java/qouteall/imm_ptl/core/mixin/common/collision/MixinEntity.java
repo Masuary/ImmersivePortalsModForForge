@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.IPMcHelper;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.portal.EndPortalEntity;
 import qouteall.imm_ptl.core.portal.Portal;
@@ -218,7 +219,7 @@ public abstract class MixinEntity implements IEEntity {
                 
                 Level destinationWorld = collidingPortal.getDestinationWorld();
                 
-                if (destinationWorld != null && destinationWorld.hasChunk(
+                if (destinationWorld != null && LevelThreads.isOwnedByCurrentThread(destinationWorld) && destinationWorld.hasChunk(
                     SectionPos.blockToSectionCoord(remoteLandingPos.getX()),
                     SectionPos.blockToSectionCoord(remoteLandingPos.getZ())
                 )) {

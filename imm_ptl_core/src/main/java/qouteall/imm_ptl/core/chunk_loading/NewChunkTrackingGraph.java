@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.Validate;
+import org.jetbrains.annotations.Nullable;
 import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.miscellaneous.GcMonitor;
@@ -20,6 +21,8 @@ import qouteall.q_misc_util.my_util.SignalBiArged;
 
 import java.lang.ref.WeakReference;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -93,12 +96,15 @@ public class NewChunkTrackingGraph {
         ) != -1;
     }
     
-    // Every chunk has a list of watching records
+    // Every chunk has a list of watching records. Written on the server thread outside level ticks only; read from
+    // levels that tick on other threads (see LevelThreads).
     private static final Map<ResourceKey<Level>, Long2ObjectLinkedOpenHashMap<ArrayList<PlayerWatchRecord>>>
-        data = new HashMap<>();
+        data = new ConcurrentHashMap<>();
     
-    private static final ArrayList<WeakReference<ChunkLoader>>
-        additionalChunkLoaders = new ArrayList<>();
+    private static final List<WeakReference<ChunkLoader>>
+        additionalChunkLoaders = new CopyOnWriteArrayList<>();
+    
+    private static volatile boolean isUpdateRequested = false;
     
     public static class PlayerInfo {
         public final Set<ResourceKey<Level>> visibleDimensions = new HashSet<>();
@@ -137,6 +143,12 @@ public class NewChunkTrackingGraph {
     
     private static Long2ObjectLinkedOpenHashMap<ArrayList<PlayerWatchRecord>> getChunkRecordMap(ResourceKey<Level> dimension) {
         return data.computeIfAbsent(dimension, k -> new Long2ObjectLinkedOpenHashMap<>());
+    }
+    
+    @Nullable
+    private static ArrayList<PlayerWatchRecord> getChunkRecords(ResourceKey<Level> dimension, long chunkPos) {
+        Long2ObjectLinkedOpenHashMap<ArrayList<PlayerWatchRecord>> chunkRecordMap = data.get(dimension);
+        return chunkRecordMap == null ? null : chunkRecordMap.get(chunkPos);
     }
     
     public static PlayerInfo getPlayerInfo(ServerPlayer player) {
@@ -395,7 +407,8 @@ public class NewChunkTrackingGraph {
             }
             flushPendingLoading(player);
         });
-        if (gameTime % updateInterval == 0) {
+        if (isUpdateRequested || gameTime % updateInterval == 0) {
+            isUpdateRequested = false;
             updateAndPurge();
         }
         
@@ -427,7 +440,7 @@ public class NewChunkTrackingGraph {
     ) {
         long chunkPos = ChunkPos.asLong(x, z);
         
-        ArrayList<PlayerWatchRecord> recordMap = getChunkRecordMap(dimension).get(chunkPos);
+        ArrayList<PlayerWatchRecord> recordMap = getChunkRecords(dimension, chunkPos);
         if (recordMap == null) {
             return false;
         }
@@ -475,8 +488,7 @@ public class NewChunkTrackingGraph {
         ResourceKey<Level> dimension,
         int x, int z
     ) {
-        ArrayList<PlayerWatchRecord> records = getChunkRecordMap(dimension)
-            .get(ChunkPos.asLong(x, z));
+        ArrayList<PlayerWatchRecord> records = getChunkRecords(dimension, ChunkPos.asLong(x, z));
         if (records == null) {
             return Stream.empty();
         }
@@ -488,8 +500,7 @@ public class NewChunkTrackingGraph {
         ResourceKey<Level> dimension,
         long chunkPos
     ) {
-        ArrayList<PlayerWatchRecord> records = getChunkRecordMap(dimension)
-            .get(chunkPos);
+        ArrayList<PlayerWatchRecord> records = getChunkRecords(dimension, chunkPos);
         if (records == null) {
             return -1;
         }
@@ -578,9 +589,10 @@ public class NewChunkTrackingGraph {
         return !map.isEmpty();
     }
     
+    // applied at the end of this tick: it can be called while levels tick on other threads
     public static void addGlobalAdditionalChunkLoader(ChunkLoader chunkLoader) {
         additionalChunkLoaders.add(new WeakReference<>(chunkLoader));
-        updateAndPurge();
+        isUpdateRequested = true;
     }
     
     // if this method is accidentally not called
