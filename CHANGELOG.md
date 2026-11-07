@@ -6,9 +6,8 @@ below are relative to upstream 1.4.20.
 
 ## 1.4.20-vh3r.2
 
-Built for the same pack as 1.4.20-vh3r.1 (Minecraft 1.18.2, Forge 40.2, Vault Hunters 3 Remastered 3.0.1). The network
-protocol is unchanged (`1.0-vh3r1`), so vh3r.1 and vh3r.2 servers and clients can still join each other, but update
-both: the vault ticking change works on the server, the buffer fix on the client.
+Servers and players can update separately: a vh3r.1 player can still join a vh3r.2 server and the other way round.
+Update both anyway. The server gets the vault speedup and the freeze fix, and each player's game gets the memory fix.
 
 ### Vaults tick in parallel again
 
