@@ -1,8 +1,8 @@
 # Immersive Portals Mod for Forge
 
 > **This is Immersive Portals for Vault Hunters**, an unofficial fork of the Forge 1.18.2 version (1.4.20) made
-> compatible with Vault Hunters 3 Remastered: see-through vault portals that keep Vault Hunters' own rules, plus the
-> engine fixes the pack needs. All changes from upstream are listed in [CHANGELOG.md](CHANGELOG.md). Immersive Portals
+> compatible with Vault Hunters 3 (Remastered 3.0.1 and 3rd Edition 3.21.7): see-through vault portals that keep Vault
+> Hunters' own rules, plus the engine fixes the packs need. All changes from upstream are listed in [CHANGELOG.md](CHANGELOG.md). Immersive Portals
 > is made by qouteall and kept alive on Forge by Nick1st; this fork stays under the Apache License 2.0. Please report
 > problems with this fork [here](https://github.com/Masuary/ImmersivePortalsModForForge/issues), not to the original
 > authors.

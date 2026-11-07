@@ -1,8 +1,19 @@
 # Changelog: Immersive Portals for Vault Hunters
 
 Unofficial fork of [Immersive Portals for Forge](https://github.com/iPortalTeam/ImmersivePortalsModForForge) (1.18
-branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible with Vault Hunters 3 Remastered. Changes
-below are relative to upstream 1.4.20.
+branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible with Vault Hunters 3 (Remastered 3.0.1 and,
+since 1.4.20-vh3r.3, 3rd Edition 3.21.7). Changes below are relative to upstream 1.4.20.
+
+## 1.4.20-vh3r.3
+
+Nothing changes on Remastered 3.0.1, and vh3r.2 and vh3r.3 servers and players can join each other.
+
+### Vault Hunters 3rd Edition 3.21.7
+
+- Now also runs with the regular Vault Hunters 3rd Edition 3.21.7 pack (`the_vault` 1.18.2-3.21.6.6884), on servers
+  and in singleplayer. Before, the game crashed while loading mods there.
+- Vault windows, entering and leaving through them and the vault rules work the same as on Remastered. Floor
+  (horizontal) frames only exist in Remastered and keep Vault Hunters' own portal there.
 
 ## 1.4.20-vh3r.2
 

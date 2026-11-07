@@ -5,11 +5,14 @@ import iskallia.vault.world.data.ServerVaults;
 import iskallia.vault.world.data.VaultSpectatorData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
@@ -17,7 +20,6 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import qouteall.imm_ptl.core.IPGlobal;
-import qouteall.imm_ptl.core.compat.mixin.IEVaultServerVaults;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules.VaultPresence;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.dimension.DynamicDimensionsImpl;
@@ -145,11 +147,31 @@ public final class VaultHuntersCompat {
             VaultSpectatorData.stopSpectating(player.getUUID());
         }
         else {
-            IEVaultServerVaults.ip_sendToSpawnPoint(player);
+            sendToSpawnPoint(player);
         }
         player.sendMessage(
             new TextComponent(reason + ", so you were sent back.").withStyle(ChatFormatting.GOLD),
             Util.NIL_UUID
         );
+    }
+
+    // The same as Vault Hunters Remastered's private ServerVaults.sendToSpawnPoint, which regular Vault Hunters lacks
+    private static void sendToSpawnPoint(ServerPlayer player) {
+        ServerLevel respawnLevel = player.server.getLevel(player.getRespawnDimension());
+        BlockPos respawnPosition = player.getRespawnPosition();
+        if (respawnLevel != null && respawnPosition != null) {
+            Optional<Vec3> standUpPosition = Player.findRespawnPositionAndUseSpawnBlock(
+                respawnLevel, respawnPosition, player.getRespawnAngle(), player.isRespawnForced(), true
+            );
+            if (standUpPosition.isPresent()) {
+                Vec3 position = standUpPosition.get();
+                player.teleportTo(respawnLevel, position.x, position.y, position.z, player.getRespawnAngle(), 0);
+                return;
+            }
+        }
+        ServerLevel overworld = player.server.overworld();
+        BlockPos worldSpawn = overworld.getSharedSpawnPos();
+        player.teleportTo(overworld, worldSpawn.getX() + 0.5, worldSpawn.getY(), worldSpawn.getZ() + 0.5,
+            overworld.getSharedSpawnAngle(), 0);
     }
 }

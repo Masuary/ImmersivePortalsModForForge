@@ -6,7 +6,6 @@
   "mixins": [
     "IESodiumWorldRenderer",
     "IEVaultListenersLogic",
-    "IEVaultServerVaults",
     "MixinFlywheelCrumblingRenderer",
     "MixinFlywheelProgramCompiler",
     "MixinFlywheelQuadConverter",

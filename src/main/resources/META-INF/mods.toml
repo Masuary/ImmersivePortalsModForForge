@@ -11,10 +11,10 @@ displayName="Immersive Portals"
 displayURL="https://qouteall.fun/immptl"
 logoFile="icon.png"
 authors="qouteall"
-credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters 3 Remastered edition)"
+credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters edition)"
 description='''
 See through portals and travel between dimensions seamlessly.
-Vault Hunters 3 Remastered edition: an unofficial fork of the Forge 1.18.2 port, made compatible with Vault Hunters.
+Vault Hunters edition: an unofficial fork of the Forge 1.18.2 port, made compatible with Vault Hunters 3 (Remastered 3.0.1 and 3rd Edition 3.21.7).
 '''
 
 [[mods]]
@@ -24,7 +24,7 @@ displayName="Immersive Portals Core"
 displayURL="https://qouteall.fun/immptl"
 logoFile="icon.png"
 authors="qouteall"
-credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters 3 Remastered edition)"
+credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters edition)"
 description='''
 The core functionality of see-through portals and seamless teleportation.
 Provide the portal commands and datapack-based custom portal generation.
@@ -37,7 +37,7 @@ version="${file.jarVersion}"
 displayName="QMiscUtil"
 logoFile="icon.png"
 authors="qouteall"
-credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters 3 Remastered edition)"
+credits="Nick1st (Trying to keep the forge version alive), Masuary (Vault Hunters edition)"
 description='''
 A miscellaneous library from qouteall. Used by Immersive Portals.
 '''

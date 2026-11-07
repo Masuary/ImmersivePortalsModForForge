@@ -26,6 +26,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
@@ -120,6 +121,12 @@ public final class VaultPortalLinks {
 
     public static boolean isCrossing(Entity entity) {
         return crossingPlayer != null && entity == crossingPlayer;
+    }
+
+    // Floor frames only exist in Vault Hunters Remastered: regular Vault Hunters has no VaultPortalBlock.HORIZONTAL
+    public static boolean isFloorFrame(BlockState frameState) {
+        return frameState.getBlock().getStateDefinition().getProperty("horizontal") instanceof BooleanProperty horizontal
+            && frameState.getValue(horizontal);
     }
 
     /**
@@ -330,7 +337,7 @@ public final class VaultPortalLinks {
             return impossible(vaultId, "its start-room portal %s..%s is not a flat wall portal with one open side"
                 .formatted(entrance.get(PortalData.MIN), entrance.get(PortalData.MAX)));
         }
-        if (!(frameState.getBlock() instanceof VaultPortalBlock) || frameState.getValue(VaultPortalBlock.HORIZONTAL)) {
+        if (!(frameState.getBlock() instanceof VaultPortalBlock) || isFloorFrame(frameState)) {
             return impossible(vaultId, "its hub frame is a floor frame or gone");
         }
         Opening frameOpening = getFrameOpening(hub, link.touchedBlock(), vaultId, frameState);

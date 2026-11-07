@@ -94,7 +94,7 @@ public final class VaultPreviews {
         }
         boolean isVaultTurnedOff = PortalDimensionFilter.isDisabled(hub.dimension().location())
             || PortalDimensionFilter.isDisabled(ANY_VAULT_LEVEL);
-        if (!VaultPreviewRules.shouldPreview(VaultPreviewRules.getMode(), state.getValue(VaultPortalBlock.HORIZONTAL),
+        if (!VaultPreviewRules.shouldPreview(VaultPreviewRules.getMode(), VaultPortalLinks.isFloorFrame(state),
             crystal.getProperties().getChallengeUuid() != null, isVaultTurnedOff)) {
             return;
         }
