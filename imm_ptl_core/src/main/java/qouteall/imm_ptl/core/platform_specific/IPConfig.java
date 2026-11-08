@@ -1,11 +1,14 @@
 package qouteall.imm_ptl.core.platform_specific;
 
+import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 import qouteall.imm_ptl.core.IPGlobal;
+import qouteall.imm_ptl.core.compat.vault_hunters.PlainFrameRules;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPreviewRules;
 import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 import qouteall.q_misc_util.Helper;
@@ -55,6 +58,7 @@ public class IPConfig {
     public static ForgeConfigSpec.ConfigValue<List<? extends String>> portalDisabledDimensions;
     public static ForgeConfigSpec.EnumValue<VaultPreviewRules.Mode> vaultPreview;
     public static ForgeConfigSpec.IntValue vaultPreviewTimeoutMinutes;
+    public static ForgeConfigSpec.ConfigValue<String> vaultWindowToggleItem;
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
@@ -108,6 +112,9 @@ public class IPConfig {
         vaultPreviewTimeoutMinutes = builder
             .comment("Minutes an unentered vault preview stays with vaultPreview = timeout")
             .defineInRange("vaultPreviewTimeoutMinutes", 5, 1, 10080);
+        vaultWindowToggleItem = builder
+            .comment("Vault Hunters: sneaking and using this item on a lit hub frame switches its vault window off (Vault Hunters' own portal for everyone) or back on; only a player who could break the frame may switch it, and the item is not used up. An item id (\"minecraft:glowstone_dust\"), an item tag (\"#forge:dusts/glowstone\") or empty to turn the switch off. A value naming no item is reset to the default with a warning. To turn vault windows off everywhere, add \"the_vault\" to portalDisabledDimensions")
+            .define("vaultWindowToggleItem", PlainFrameRules.DEFAULT_TOGGLE_ITEM, IPConfig::isValidVaultWindowToggleItem);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, builder.build());
     }
@@ -171,8 +178,19 @@ public class IPConfig {
         DimensionMisc.restoreMissingVanillaDimensions = restoreMissingVanillaDimensions.get();
         PortalDimensionFilter.configure(portalDisabledDimensions.get());
         VaultPreviewRules.configure(vaultPreview.get(), vaultPreviewTimeoutMinutes.get());
+        PlainFrameRules.configure(vaultWindowToggleItem.get());
 
         Helper.log("IP Config Applied");
+    }
+
+    // items are registered before the common config loads; an item tag can only be checked once tags load (PlainFrames)
+    private static boolean isValidVaultWindowToggleItem(Object value) {
+        if (!(value instanceof String text) || !PlainFrameRules.isWellFormedToggleItem(text)) {
+            return false;
+        }
+        PlainFrameRules.ToggleItem toggleItem = PlainFrameRules.parseToggleItem(text);
+        return toggleItem.kind() != PlainFrameRules.ToggleItemKind.ITEM
+            || (ForgeRegistries.ITEMS.containsKey(toggleItem.id()) && ForgeRegistries.ITEMS.getValue(toggleItem.id()) != Items.AIR);
     }
     
 }

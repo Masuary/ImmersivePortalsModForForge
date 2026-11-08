@@ -7,6 +7,10 @@
 > problems with this fork [here](https://github.com/Masuary/ImmersivePortalsModForForge/issues), not to the original
 > authors.
 >
+> To keep Vault Hunters' own portal on a frame, sneak and use glowstone dust on the lit frame (the item is
+> `vaultWindowToggleItem` in `imm_ptl_core-common.toml`); only players who could break the frame may switch it. To turn
+> vault windows off for the whole server, add `"the_vault"` to `portalDisabledDimensions` in the same file.
+>
 > Build: `./gradlew build` with JDK 17 (run `clean` as a separate command, and do not pass `--parallel`).
 
 It's a Minecraft mod that provides see-through portals and seamless teleportation. It also can create "Non-Euclidean" (Uneuclidean) space effect.

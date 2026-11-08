@@ -5,6 +5,34 @@ branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible wit
 since 1.4.20-vh3r.3, 3rd Edition 3.21.7; Wold's Vaults 0.34.2 since 1.4.20-vh3r.4). Changes below are relative to
 upstream 1.4.20.
 
+## 1.4.20-vh3r.6
+
+Vault windows can be switched off per frame, for builds that use Vault Hunters' own portal texture (a server change),
+and the world no longer disappears behind Vault Hunters' screens (a client change). Update both.
+
+### Fixed
+
+- With shaders off, the world behind Vault Hunters' H menu (and its other screens built the same way) was mostly
+  missing: only the sky, clouds and a few block faces were drawn. Those screens clip their panels with the stencil
+  buffer and leave its settings changed, and Immersive Portals started its next frame with them, so most of the world
+  failed the stencil test. It now resets the stencil settings at the start of each frame.
+
+### Vault windows off per frame
+
+- Sneak and use glowstone dust on a lit hub frame to switch its vault window off: the action bar says "Vault window
+  off", and every player sees Vault Hunters' own portal on that frame and goes in and out through Vault Hunters'
+  teleport, as without this mod. The vault's window over its exit portal goes too. Do the same again for "Vault window
+  on": the windows come back for its current vault, or with the next vault started from it. The glowstone dust is not
+  used up.
+- Only a player who could break the frame (claims, spawn protection) may switch it; others get "You may not change
+  this frame".
+- A frame stays switched off through vault runs, going out and relighting and server restarts. Breaking a frame block
+  resets it, so a rebuilt frame gets windows again.
+- New config `vaultWindowToggleItem` (`imm_ptl_core-common.toml`): the item for the switch, as an item id
+  (`minecraft:glowstone_dust`, the default) or an item tag (`#forge:dusts/glowstone`); empty turns the switch off. A
+  value that names no item is reset to the default with a warning in the log.
+- To turn vault windows off for the whole server, add `"the_vault"` to `portalDisabledDimensions`.
+
 ## 1.4.20-vh3r.5
 
 A client-side fix: vh3r.4 and vh3r.5 servers and players can join each other.

@@ -49,6 +49,7 @@ public final class VaultHuntersCompat {
         DynamicDimensionsImpl.externalDimensionRemovedSignal.connect(VaultHuntersCompat::onLevelRemoved);
         VaultPortalLinks.init();
         VaultPreviews.init();
+        PlainFrames.init();
     }
 
     public static boolean isNonListenerInVault(ServerPlayer player) {

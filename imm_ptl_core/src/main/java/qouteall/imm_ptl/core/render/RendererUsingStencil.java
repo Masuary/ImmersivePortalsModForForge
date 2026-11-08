@@ -87,7 +87,14 @@ public class RendererUsingStencil extends PortalRenderer {
         }
         
         client.getMainRenderTarget().bindWrite(false);
-        
+
+        // a GUI that clips with the stencil (Vault Hunters' screens) can leave a zero stencil write mask, which also
+        // stops the clear below, and its own stencil function, which would hide most of the world: start from the
+        // state our own frame ends with
+        GlStateManager._stencilMask(0xFF);
+        GlStateManager._stencilFunc(GL_ALWAYS, 2333, 0xFF);
+        GlStateManager._stencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
         GL11.glClearStencil(0);
         GL11.glClear(GL11.GL_STENCIL_BUFFER_BIT);
         

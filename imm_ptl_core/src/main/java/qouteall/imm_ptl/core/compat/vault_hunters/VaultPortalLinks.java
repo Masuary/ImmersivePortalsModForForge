@@ -35,6 +35,7 @@ import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import qouteall.imm_ptl.core.LevelThreads;
 import qouteall.imm_ptl.core.McHelper;
 import qouteall.imm_ptl.core.compat.mixin.IEVaultListenersLogic;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPortalGeometry.Opening;
@@ -53,6 +54,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.function.Predicate;
 
 /**
  * See-through vault portals (V2/V3): once a hub frame has a vault, its opening gets a two-way window to the vault's
@@ -72,6 +74,14 @@ public final class VaultPortalLinks {
         "imm_ptl_vault_link", Comparator.comparingLong(ChunkPos::toLong), (int) PENDING_LINK_TIMEOUT_TICKS + RESOLVE_INTERVAL_TICKS * 2
     );
     private static final int PENDING_LINK_TICKET_DISTANCE = 2;
+    // Vault Hunters registers the start-room portal while it generates region 0,0 of the vault (blocks 0..46); a
+    // ticket of distance 3 on chunk 1,1 keeps chunks 0..2 entity-ticking, so the start room is made and linked even when
+    // no runner is there (a lit frame's preview, a frame switched back from plain)
+    private static final ChunkPos START_ROOM_CHUNK = new ChunkPos(1, 1);
+    private static final int START_ROOM_TICKET_DISTANCE = 3;
+    private static final TicketType<ChunkPos> START_ROOM_TICKET = TicketType.create(
+        "imm_ptl_vault_start_room", Comparator.comparingLong(ChunkPos::toLong), (int) PENDING_LINK_TIMEOUT_TICKS + RESOLVE_INTERVAL_TICKS * 2
+    );
     // Vault Hunters frames are at most 21 x 21 blocks inside
     private static final int MAX_FRAME_BLOCKS = 21 * 21;
     private static final double LINK_SEARCH_RADIUS = 24;
@@ -86,7 +96,10 @@ public final class VaultPortalLinks {
     // Vault Hunters resends the experience bar this long after its own dimension changes
     private static final int EXPERIENCE_RESYNC_DELAY_TICKS = 20;
 
-    private record PendingLink(ResourceKey<Level> hubDimension, BlockPos touchedBlock, Vec3 touchPosition, long requestedAt) {
+    private record PendingLink(
+        ResourceKey<Level> hubDimension, BlockPos touchedBlock, Vec3 touchPosition, long requestedAt,
+        @Nullable ResourceKey<Level> vaultDimension
+    ) {
     }
 
     private enum LinkAttempt {
@@ -172,7 +185,7 @@ public final class VaultPortalLinks {
         // windows of a chunk whose entities are not loaded yet would not be found, and be made a second time
         if (vaultId == null || pendingLinks.containsKey(vaultId) || unlinkableVaults.contains(vaultId)
             || !level.areEntitiesLoaded(ChunkPos.asLong(pos)) || ServerVaults.get(vaultId).isEmpty()
-            || hasWindow(level, pos, vaultId, VaultPortalRole.ENTRY)) {
+            || PlainFrames.isPlain(level, pos) || hasWindow(level, pos, vaultId, VaultPortalRole.ENTRY)) {
             return;
         }
         // the previous tick's position: a fast player can already be past the frame's plane when the touch fires
@@ -187,13 +200,16 @@ public final class VaultPortalLinks {
         if (pendingLinks.containsKey(vaultId) || unlinkableVaults.contains(vaultId)) {
             return;
         }
-        pendingLinks.put(vaultId, new PendingLink(hub.dimension(), frameBlock.immutable(), viewerPosition, hub.getGameTime()));
+        VirtualWorld world = ServerVaults.get(vaultId).flatMap(ServerVaults::getWorld).orElse(null);
+        pendingLinks.put(vaultId, new PendingLink(hub.dimension(), frameBlock.immutable(), viewerPosition, hub.getGameTime(),
+            world == null ? null : world.dimension()));
         ChunkPos frameChunk = new ChunkPos(frameBlock);
         hub.getChunkSource().addRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
-    }
-
-    static boolean isLinkPending(UUID vaultId) {
-        return pendingLinks.containsKey(vaultId);
+        if (world != null) {
+            // a touch arrives from the hub's tick, while the vault level may tick on Vault Hunters' pool
+            LevelThreads.runOwning(() -> world.getChunkSource()
+                .addRegionTicket(START_ROOM_TICKET, START_ROOM_CHUNK, START_ROOM_TICKET_DISTANCE, START_ROOM_CHUNK), world);
+        }
     }
 
     public static void removeIfStale(VaultPortal portal) {
@@ -202,11 +218,22 @@ public final class VaultPortalLinks {
             ? portal.getVaultId().equals(getVaultId(portal.level, portal.getVaultHuntersBlock()))
             : isStartRoomPortalIntact(portal);
         boolean isTurnedOff = PortalDimensionFilter.isPortalDisabled(portal.level.dimension(), portal.dimensionTo);
-        if (!vaultExists || !frameIntact || isTurnedOff) {
+        boolean isFramePlain = PlainFrames.isVaultPlain(portal.getVaultId());
+        if (!vaultExists || !frameIntact || isTurnedOff || isFramePlain) {
             LOGGER.info("Removed the {} window of vault {} at {}: {}", portal.getRole(), portal.getVaultId(),
                 portal.getVaultHuntersBlock(), !vaultExists ? "the vault is gone"
-                    : !frameIntact ? "its Vault Hunters portal is gone" : "portals are turned off there (portalDisabledDimensions)");
+                    : !frameIntact ? "its Vault Hunters portal is gone"
+                    : isTurnedOff ? "portals are turned off there (portalDisabledDimensions)" : "its hub frame was made plain");
             portal.remove(Entity.RemovalReason.KILLED);
+        }
+    }
+
+    static void removeEntryWindows(ServerLevel hub, Opening frameOpening, UUID vaultId) {
+        AABB frameBox = new AABB(frameOpening.min(), frameOpening.max().offset(1, 1, 1)).inflate(LINK_SEARCH_RADIUS);
+        for (VaultPortal window : hub.getEntitiesOfClass(VaultPortal.class, frameBox,
+            portal -> portal.getRole() == VaultPortalRole.ENTRY && vaultId.equals(portal.getVaultId()))) {
+            LOGGER.info("Removed the ENTRY window of vault {} at {}: its hub frame was made plain", vaultId, window.getVaultHuntersBlock());
+            window.remove(Entity.RemovalReason.KILLED);
         }
     }
 
@@ -219,6 +246,9 @@ public final class VaultPortalLinks {
             && crossingEyePos.distanceTo(player.getEyePosition()) < CROSSING_EYE_LAG;
         if (vault == null || player.level != portal.level || !(state.getBlock() instanceof VaultPortalBlock) || !isAtWindow) {
             return logCrossing(false, player, portal, "the player is not at the window");
+        }
+        if (PlainFrames.isVaultPlain(portal.getVaultId())) {
+            return logCrossing(false, player, portal, "its hub frame was made plain");
         }
         if (portal.getRole() == VaultPortalRole.EXIT && VaultRules.isExitTooSoonAfterEntry(getTicksSince(lastWindowEntryTick, player))) {
             return logCrossing(false, player, portal, "the player has only just come in");
@@ -296,8 +326,8 @@ public final class VaultPortalLinks {
             PendingLink link = entry.getValue();
             ServerLevel hub = server.getLevel(link.hubDimension());
             Vault vault = ServerVaults.get(vaultId).orElse(null);
-            if (hub == null || vault == null) {
-                releaseFrameChunk(hub, link);
+            if (hub == null || vault == null || PlainFrames.isPlain(hub, link.touchedBlock())) {
+                releaseChunks(server, hub, link);
                 iterator.remove();
                 continue;
             }
@@ -307,16 +337,20 @@ public final class VaultPortalLinks {
             }
             boolean timedOut = hub.getGameTime() - link.requestedAt() > PENDING_LINK_TIMEOUT_TICKS;
             if (attempt != LinkAttempt.WAITING || timedOut) {
-                releaseFrameChunk(hub, link);
+                releaseChunks(server, hub, link);
                 iterator.remove();
             }
         }
     }
 
-    private static void releaseFrameChunk(@Nullable ServerLevel hub, PendingLink link) {
+    private static void releaseChunks(MinecraftServer server, @Nullable ServerLevel hub, PendingLink link) {
         if (hub != null) {
             ChunkPos frameChunk = new ChunkPos(link.touchedBlock());
             hub.getChunkSource().removeRegionTicket(PENDING_LINK_TICKET, frameChunk, PENDING_LINK_TICKET_DISTANCE, frameChunk);
+        }
+        ServerLevel vaultLevel = link.vaultDimension() == null ? null : server.getLevel(link.vaultDimension());
+        if (vaultLevel != null) {
+            vaultLevel.getChunkSource().removeRegionTicket(START_ROOM_TICKET, START_ROOM_CHUNK, START_ROOM_TICKET_DISTANCE, START_ROOM_CHUNK);
         }
     }
 
@@ -354,17 +388,25 @@ public final class VaultPortalLinks {
         }
         BlockPos frameBlock = getBottomCentreBlock(frameOpening);
         BlockPos entranceBlock = getBottomCentreBlock(entranceOpening);
-        if (hasWindow(hub, frameBlock, vaultId, VaultPortalRole.ENTRY) || hasWindow(world, entranceBlock, vaultId, VaultPortalRole.EXIT)) {
+        // a frame switched back from plain can still have its exit window: it goes on its next check, which an exit
+        // window in an unloaded start room never had
+        boolean hasEntryWindows = hasWindow(hub, frameBlock, vaultId, VaultPortalRole.ENTRY);
+        boolean hasExitWindow = hasWindow(world, entranceBlock, vaultId, VaultPortalRole.EXIT);
+        if (hasEntryWindows && hasExitWindow) {
             return LinkAttempt.LINKED;
         }
 
         Direction creatorSide = getSideOf(frameOpening, link.touchPosition());
-        for (Direction viewerSide : new Direction[]{creatorSide, creatorSide.getOpposite()}) {
-            Placement entry = VaultPortalGeometry.placeEntry(frameOpening, viewerSide, entranceOpening, arrival);
-            McHelper.spawnServerEntity(VaultPortal.create(hub, VaultPortalRole.ENTRY, vaultId, frameBlock, entry, world.dimension()));
+        if (!hasEntryWindows) {
+            for (Direction viewerSide : new Direction[]{creatorSide, creatorSide.getOpposite()}) {
+                Placement entry = VaultPortalGeometry.placeEntry(frameOpening, viewerSide, entranceOpening, arrival);
+                McHelper.spawnServerEntity(VaultPortal.create(hub, VaultPortalRole.ENTRY, vaultId, frameBlock, entry, world.dimension()));
+            }
         }
-        Placement exit = VaultPortalGeometry.placeExit(entranceOpening, arrival, frameOpening, creatorSide);
-        McHelper.spawnServerEntity(VaultPortal.create(world, VaultPortalRole.EXIT, vaultId, entranceBlock, exit, hub.dimension()));
+        if (!hasExitWindow) {
+            Placement exit = VaultPortalGeometry.placeExit(entranceOpening, arrival, frameOpening, creatorSide);
+            McHelper.spawnServerEntity(VaultPortal.create(world, VaultPortalRole.EXIT, vaultId, entranceBlock, exit, hub.dimension()));
+        }
         LOGGER.info("Linked the hub frame {}..{} in {} to the start-room portal {}..{} of vault {} (entry window {} x {}, exit window {} x {})",
             frameOpening.min(), frameOpening.max(), hub.dimension().location(),
             entranceOpening.min(), entranceOpening.max(), vaultId,
@@ -406,12 +448,24 @@ public final class VaultPortalLinks {
         return world.getBlockState(pos).getCollisionShape(world, pos).isEmpty();
     }
 
-    // the connected portal blocks of this vault around the touched one; the frame blocks' axis is the plane's width
+    // the connected portal blocks of this vault around the touched one
     @Nullable
     private static Opening getFrameOpening(ServerLevel hub, BlockPos touchedBlock, UUID vaultId, BlockState frameState) {
+        return getOpening(hub, touchedBlock, frameState, pos -> vaultId.equals(getVaultId(hub, pos)));
+    }
+
+    // the connected Vault Hunters portal blocks around this one, whether or not the frame has a vault yet
+    @Nullable
+    static Opening getLitFrameOpening(ServerLevel hub, BlockPos portalBlock, BlockState frameState) {
+        return getOpening(hub, portalBlock, frameState, pos -> hub.getBlockState(pos).getBlock() instanceof VaultPortalBlock);
+    }
+
+    // the frame blocks' axis is the plane's width
+    @Nullable
+    private static Opening getOpening(ServerLevel hub, BlockPos touchedBlock, BlockState frameState, Predicate<BlockPos> isPartOfFrame) {
         Direction.Axis widthAxis = frameState.getValue(NetherPortalBlock.AXIS);
         Direction.Axis normalAxis = widthAxis == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
-        Set<BlockPos> blocks = collectFrameBlocks(hub, touchedBlock, vaultId);
+        Set<BlockPos> blocks = collectFrameBlocks(touchedBlock, isPartOfFrame);
         if (blocks == null) {
             return null;
         }
@@ -425,7 +479,7 @@ public final class VaultPortalLinks {
     }
 
     @Nullable
-    private static Set<BlockPos> collectFrameBlocks(ServerLevel hub, BlockPos start, UUID vaultId) {
+    private static Set<BlockPos> collectFrameBlocks(BlockPos start, Predicate<BlockPos> isPartOfFrame) {
         Set<BlockPos> found = new HashSet<>();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         queue.add(start.immutable());
@@ -434,7 +488,7 @@ public final class VaultPortalLinks {
             BlockPos current = queue.poll();
             for (Direction direction : Direction.values()) {
                 BlockPos next = current.relative(direction);
-                if (!found.contains(next) && vaultId.equals(getVaultId(hub, next))) {
+                if (!found.contains(next) && isPartOfFrame.test(next)) {
                     if (found.size() >= MAX_FRAME_BLOCKS) {
                         return null;
                     }
@@ -482,7 +536,7 @@ public final class VaultPortalLinks {
     }
 
     @Nullable
-    private static UUID getVaultId(Level level, BlockPos pos) {
+    static UUID getVaultId(Level level, BlockPos pos) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (!(blockEntity instanceof VaultPortalTileEntity tile)) {
             return null;

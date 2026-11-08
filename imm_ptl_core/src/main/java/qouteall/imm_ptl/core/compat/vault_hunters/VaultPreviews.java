@@ -19,8 +19,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.TicketType;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -35,12 +33,10 @@ import org.apache.logging.log4j.Logger;
 import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
 
 import javax.annotation.Nullable;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -55,13 +51,6 @@ public final class VaultPreviews {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final String DATA_NAME = "imm_ptl_vault_previews";
     private static final int CHECK_INTERVAL_TICKS = 20;
-    // Vault Hunters registers the start-room portal while it generates region 0,0 of the vault (blocks 0..46); a
-    // ticket of distance 3 on chunk 1,1 keeps chunks 0..2 entity-ticking, so the start room is made and linked
-    private static final ChunkPos START_ROOM_CHUNK = new ChunkPos(1, 1);
-    private static final int START_ROOM_TICKET_DISTANCE = 3;
-    private static final TicketType<ChunkPos> START_ROOM_TICKET = TicketType.create(
-        "imm_ptl_vault_preview", Comparator.comparingLong(ChunkPos::toLong), 20 * 180
-    );
     private static final ResourceLocation ANY_VAULT_LEVEL =
         new ResourceLocation(VaultRules.VAULT_HUNTERS_MOD_ID, "vault");
 
@@ -70,7 +59,6 @@ public final class VaultPreviews {
 
     @Nullable
     private static Storage storage;
-    private static final Set<UUID> startRoomTickets = new HashSet<>();
     private static boolean startupChecked;
 
     private VaultPreviews() {
@@ -80,7 +68,6 @@ public final class VaultPreviews {
         MinecraftForge.EVENT_BUS.addListener(VaultPreviews::onServerTick);
         MinecraftForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> {
             storage = null;
-            startRoomTickets.clear();
             startupChecked = false;
         });
     }
@@ -100,14 +87,14 @@ public final class VaultPreviews {
         boolean isVaultTurnedOff = PortalDimensionFilter.isDisabled(hub.dimension().location())
             || PortalDimensionFilter.isDisabled(ANY_VAULT_LEVEL);
         if (!VaultPreviewRules.shouldPreview(VaultPreviewRules.getMode(), VaultPortalLinks.isFloorFrame(state),
-            crystal.getProperties().getChallengeUuid() != null, isVaultTurnedOff, getObjectiveType(crystal))) {
+            PlainFrames.isPlain(hub, portalBlock), crystal.getProperties().getChallengeUuid() != null, isVaultTurnedOff,
+            getObjectiveType(crystal))) {
             return;
         }
         Vault vault = ServerVaults.add(VaultFactory.create(Version.latest(), crystal.copy(), lighter));
         UUID vaultId = vault.get(Vault.ID);
         setFrameVaultId(hub, portalBlock, frame, vaultId);
         getStorage(hub.getServer()).add(new Preview(vaultId, hub.dimension(), portalBlock.immutable(), hub.getGameTime()));
-        addStartRoomTicket(vault, vaultId);
         VaultPortalLinks.requestLink(hub, portalBlock, lighter.position(), vaultId);
         LOGGER.info("Created vault {} when {} lit the hub frame at {} in {}, so the frame shows it before anyone enters",
             vaultId, lighter.getName().getString(), portalBlock, hub.dimension().location());
@@ -174,13 +161,9 @@ public final class VaultPreviews {
             return;
         }
         if (!vault.get(Vault.LISTENERS).getAll().isEmpty()) {
-            releaseStartRoomTicket(vault, preview.vaultId());
             getStorage(server).remove(preview.vaultId());
             LOGGER.info("Vault {} got its first runner; it is a normal vault from now on", preview.vaultId());
             return;
-        }
-        if (startRoomTickets.contains(preview.vaultId()) && !VaultPortalLinks.isLinkPending(preview.vaultId())) {
-            releaseStartRoomTicket(vault, preview.vaultId());
         }
         ServerLevel hub = server.getLevel(preview.hubDimension());
         if (hub == null) {
@@ -199,7 +182,6 @@ public final class VaultPreviews {
         Storage previews = getStorage(server);
         previews.remove(preview.vaultId());
         Vault vault = ServerVaults.get(preview.vaultId()).orElse(null);
-        releaseStartRoomTicket(vault, preview.vaultId());
         if (vault != null) {
             ServerVaults.getWorld(vault).ifPresent(VirtualWorld::markForDeletion);
             vault.set(Vault.FINISHED);
@@ -240,21 +222,6 @@ public final class VaultPreviews {
     private static CrystalData getCrystal(Level level, BlockPos portalBlock) {
         BlockEntity blockEntity = level.getBlockEntity(portalBlock);
         return blockEntity instanceof VaultPortalTileEntity tile ? tile.getData().orElse(null) : null;
-    }
-
-    private static void addStartRoomTicket(Vault vault, UUID vaultId) {
-        VirtualWorld world = ServerVaults.getWorld(vault).orElseThrow(
-            () -> new IllegalStateException("Vault " + vaultId + " was created without a level"));
-        world.getChunkSource().addRegionTicket(START_ROOM_TICKET, START_ROOM_CHUNK, START_ROOM_TICKET_DISTANCE, START_ROOM_CHUNK);
-        startRoomTickets.add(vaultId);
-    }
-
-    private static void releaseStartRoomTicket(@Nullable Vault vault, UUID vaultId) {
-        if (!startRoomTickets.remove(vaultId) || vault == null) {
-            return;
-        }
-        ServerVaults.getWorld(vault).ifPresent(world -> world.getChunkSource()
-            .removeRegionTicket(START_ROOM_TICKET, START_ROOM_CHUNK, START_ROOM_TICKET_DISTANCE, START_ROOM_CHUNK));
     }
 
     private static Storage getStorage(MinecraftServer server) {

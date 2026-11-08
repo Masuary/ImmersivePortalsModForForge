@@ -40,14 +40,15 @@ public final class VaultPreviewRules {
     private static final Set<String> OBJECTIVES_STARTING_WITHOUT_RUNNERS = Set.of("corrupted", "hyper");
 
     /**
-     * Whether lighting this frame creates its vault at once. Floor frames get no window, Greed challenge crystals
-     * would fail their challenge if an unentered vault were dropped, and some objectives start without runners, so
-     * all of them keep Vault Hunters' first-touch creation.
+     * Whether lighting this frame creates its vault at once. Floor frames and plain frames get no window, Greed
+     * challenge crystals would fail their challenge if an unentered vault were dropped, and some objectives start
+     * without runners, so all of them keep Vault Hunters' first-touch creation.
      */
     public static boolean shouldPreview(
-        Mode currentMode, boolean isFloorFrame, boolean isChallengeCrystal, boolean isVaultTurnedOff, String objectiveType
+        Mode currentMode, boolean isFloorFrame, boolean isPlainFrame, boolean isChallengeCrystal, boolean isVaultTurnedOff,
+        String objectiveType
     ) {
-        return currentMode != Mode.off && !isFloorFrame && !isChallengeCrystal && !isVaultTurnedOff
+        return currentMode != Mode.off && !isFloorFrame && !isPlainFrame && !isChallengeCrystal && !isVaultTurnedOff
             && !OBJECTIVES_STARTING_WITHOUT_RUNNERS.contains(objectiveType);
     }
 

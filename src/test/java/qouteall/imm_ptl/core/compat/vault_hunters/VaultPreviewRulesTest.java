@@ -11,23 +11,24 @@ class VaultPreviewRulesTest {
 
     @Test
     void aLitWallFramePreviewsItsVaultUnlessTurnedOff() {
-        assertTrue(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, "cake"));
-        assertTrue(VaultPreviewRules.shouldPreview(Mode.timeout, false, false, false, "cake"));
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.off, false, false, false, "cake"));
+        assertTrue(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, false, "cake"));
+        assertTrue(VaultPreviewRules.shouldPreview(Mode.timeout, false, false, false, false, "cake"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.off, false, false, false, false, "cake"));
     }
 
     @Test
-    void floorFramesChallengeCrystalsAndDisabledVaultsKeepTheFirstTouch() {
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, true, false, false, "cake"));
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, true, false, "cake"));
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, true, "cake"));
+    void floorFramesPlainFramesChallengeCrystalsAndDisabledVaultsKeepTheFirstTouch() {
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, true, false, false, false, "cake"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, true, false, false, "cake"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, true, false, "cake"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, true, "cake"));
     }
 
     @Test
     void woldsObjectivesThatStartWithoutRunnersKeepTheFirstTouch() {
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, "corrupted"));
-        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, "hyper"));
-        assertTrue(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, "scavenger"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, false, "corrupted"));
+        assertFalse(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, false, "hyper"));
+        assertTrue(VaultPreviewRules.shouldPreview(Mode.untilBroken, false, false, false, false, "scavenger"));
     }
 
     @Test
