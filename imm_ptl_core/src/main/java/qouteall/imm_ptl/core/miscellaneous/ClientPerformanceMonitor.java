@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.miscellaneous;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Option;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -31,6 +32,8 @@ public class ClientPerformanceMonitor {
     private static int minimumFps = 60;
     private static int averageFreeMemoryMB = 1000;
     private static final int sampleNum = 20;
+    // the measured frame rate of a client at its limit wavers a little below it
+    private static final double FRAMERATE_LIMIT_REACHED_RATIO = 0.9;
     
     private static int counter = 0;
     
@@ -82,7 +85,7 @@ public class ClientPerformanceMonitor {
             return;
         }
         
-        level = PerformanceLevel.getClientPerformanceLevel(averageFps, averageFreeMemoryMB);
+        level = PerformanceLevel.getClientPerformanceLevel(getFpsForPerformanceLevel(), averageFreeMemoryMB);
         
         if (!IPGlobal.enableClientPerformanceAdjustment) {
             level = PerformanceLevel.good;
@@ -92,5 +95,16 @@ public class ClientPerformanceMonitor {
             "qouteall.imm_ptl.core.chunk_loading.NewChunkTrackingGraph.RemoteCallables.acceptClientPerformanceInfo",
             level
         );
+    }
+    
+    // a client held at its own frame rate limit (30 is a common choice) is not slow: below the limit the frame rate
+    // counts, at the limit only the memory does
+    private static int getFpsForPerformanceLevel() {
+        int framerateLimit = Minecraft.getInstance().options.framerateLimit;
+        boolean isLimited = framerateLimit < Option.FRAMERATE_LIMIT.getMaxValue();
+        if (isLimited && averageFps >= framerateLimit * FRAMERATE_LIMIT_REACHED_RATIO) {
+            return Integer.MAX_VALUE;
+        }
+        return averageFps;
     }
 }

@@ -5,6 +5,16 @@ branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible wit
 since 1.4.20-vh3r.3, 3rd Edition 3.21.7; Wold's Vaults 0.34.2 since 1.4.20-vh3r.4). Changes below are relative to
 upstream 1.4.20.
 
+## 1.4.20-vh3r.5
+
+A client-side fix: vh3r.4 and vh3r.5 servers and players can join each other.
+
+- Fixed: with the game's frame rate limit at 30 (or any limit the game keeps reaching), Immersive Portals took the
+  client for a slow one and drew and loaded much less through portals. Through a vault window the start room's far
+  doorway then showed a flat sky-blue rectangle instead of the dark vault wall behind it, and the room looked dim. A
+  client running at its own frame rate limit now counts as fast enough; a client that stays well below its limit, or
+  is short on memory, still gets the reduced portal view.
+
 ## 1.4.20-vh3r.4
 
 vh3r.3 and vh3r.4 servers and players can join each other; update both for the fixes below.
