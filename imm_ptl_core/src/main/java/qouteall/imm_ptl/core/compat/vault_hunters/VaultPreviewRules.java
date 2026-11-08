@@ -1,5 +1,7 @@
 package qouteall.imm_ptl.core.compat.vault_hunters;
 
+import java.util.Set;
+
 /**
  * Decides how long a vault created when its hub frame is lit (so the frame shows it before anyone enters) may wait
  * for its first runner. Pure, without Vault Hunters classes, so it is unit tested; {@link VaultPreviews} acts on it.
@@ -33,12 +35,20 @@ public final class VaultPreviewRules {
         return mode;
     }
 
+    // Wold's Vaults objectives whose logic runs as soon as the vault exists, before any runner is inside (Corrupted
+    // sets its global corruption state, Hyper rolls objectives and counts its event timer)
+    private static final Set<String> OBJECTIVES_STARTING_WITHOUT_RUNNERS = Set.of("corrupted", "hyper");
+
     /**
-     * Whether lighting this frame creates its vault at once. Floor frames get no window and Greed challenge crystals
-     * would fail their challenge if an unentered vault were dropped, so both keep Vault Hunters' first-touch creation.
+     * Whether lighting this frame creates its vault at once. Floor frames get no window, Greed challenge crystals
+     * would fail their challenge if an unentered vault were dropped, and some objectives start without runners, so
+     * all of them keep Vault Hunters' first-touch creation.
      */
-    public static boolean shouldPreview(Mode currentMode, boolean isFloorFrame, boolean isChallengeCrystal, boolean isVaultTurnedOff) {
-        return currentMode != Mode.off && !isFloorFrame && !isChallengeCrystal && !isVaultTurnedOff;
+    public static boolean shouldPreview(
+        Mode currentMode, boolean isFloorFrame, boolean isChallengeCrystal, boolean isVaultTurnedOff, String objectiveType
+    ) {
+        return currentMode != Mode.off && !isFloorFrame && !isChallengeCrystal && !isVaultTurnedOff
+            && !OBJECTIVES_STARTING_WITHOUT_RUNNERS.contains(objectiveType);
     }
 
     public static boolean isExpired(Mode currentMode, int currentTimeoutMinutes, long createdAtGameTime, long nowGameTime) {

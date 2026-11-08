@@ -119,11 +119,18 @@ public final class VaultPortalLinks {
         });
     }
 
+    // Wold's Vaults' Corrupted vaults break the start-room portal once a runner walks away from the start
+    private static boolean isStartRoomPortalIntact(VaultPortal portal) {
+        BlockPos block = portal.getVaultHuntersBlock();
+        return !portal.level.isLoaded(block) || portal.level.getBlockState(block).getBlock() instanceof VaultPortalBlock;
+    }
+
     public static boolean isCrossing(Entity entity) {
         return crossingPlayer != null && entity == crossingPlayer;
     }
 
-    // Floor frames only exist in Vault Hunters Remastered: regular Vault Hunters has no VaultPortalBlock.HORIZONTAL
+    // Floor frames come from Vault Hunters Remastered or BetterVaultPortals (Wold's Vaults), which both add a "horizontal"
+    // property; plain Vault Hunters has no VaultPortalBlock.HORIZONTAL
     public static boolean isFloorFrame(BlockState frameState) {
         return frameState.getBlock().getStateDefinition().getProperty("horizontal") instanceof BooleanProperty horizontal
             && frameState.getValue(horizontal);
@@ -191,13 +198,14 @@ public final class VaultPortalLinks {
 
     public static void removeIfStale(VaultPortal portal) {
         boolean vaultExists = ServerVaults.get(portal.getVaultId()).isPresent();
-        boolean frameIntact = portal.getRole() != VaultPortalRole.ENTRY
-            || portal.getVaultId().equals(getVaultId(portal.level, portal.getVaultHuntersBlock()));
+        boolean frameIntact = portal.getRole() == VaultPortalRole.ENTRY
+            ? portal.getVaultId().equals(getVaultId(portal.level, portal.getVaultHuntersBlock()))
+            : isStartRoomPortalIntact(portal);
         boolean isTurnedOff = PortalDimensionFilter.isPortalDisabled(portal.level.dimension(), portal.dimensionTo);
         if (!vaultExists || !frameIntact || isTurnedOff) {
             LOGGER.info("Removed the {} window of vault {} at {}: {}", portal.getRole(), portal.getVaultId(),
                 portal.getVaultHuntersBlock(), !vaultExists ? "the vault is gone"
-                    : !frameIntact ? "the frame is gone" : "portals are turned off there (portalDisabledDimensions)");
+                    : !frameIntact ? "its Vault Hunters portal is gone" : "portals are turned off there (portalDisabledDimensions)");
             portal.remove(Entity.RemovalReason.KILLED);
         }
     }

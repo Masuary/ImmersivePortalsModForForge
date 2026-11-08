@@ -85,6 +85,11 @@ public final class VaultPreviews {
         });
     }
 
+    // the objective id Vault Hunters itself writes into the crystal ("cake", "boss", Wold's Vaults' "corrupted" ...)
+    private static String getObjectiveType(CrystalData crystal) {
+        return crystal.writeNbt().map(nbt -> nbt.getCompound("Objective").getString("type")).orElse("");
+    }
+
     public static void onFrameLit(ServerLevel hub, BlockPos portalBlock, ServerPlayer lighter) {
         BlockState state = hub.getBlockState(portalBlock);
         CrystalData crystal = getCrystal(hub, portalBlock);
@@ -95,7 +100,7 @@ public final class VaultPreviews {
         boolean isVaultTurnedOff = PortalDimensionFilter.isDisabled(hub.dimension().location())
             || PortalDimensionFilter.isDisabled(ANY_VAULT_LEVEL);
         if (!VaultPreviewRules.shouldPreview(VaultPreviewRules.getMode(), VaultPortalLinks.isFloorFrame(state),
-            crystal.getProperties().getChallengeUuid() != null, isVaultTurnedOff)) {
+            crystal.getProperties().getChallengeUuid() != null, isVaultTurnedOff, getObjectiveType(crystal))) {
             return;
         }
         Vault vault = ServerVaults.add(VaultFactory.create(Version.latest(), crystal.copy(), lighter));

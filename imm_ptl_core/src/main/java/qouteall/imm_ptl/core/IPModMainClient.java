@@ -56,7 +56,10 @@ public class IPModMainClient {
                 }
                 
                 switch (IPGlobal.renderMode) {
-                    case normal -> switchRenderer(IrisPortalRenderer.instance);
+                    // with Forge's stencil on the main framebuffer (Vault Hunters' and Immersive Engineering's GUIs
+                    // turn it on) the deferred Iris renderer draws portal content black; the compatibility one works
+                    case normal -> switchRenderer(Minecraft.getInstance().getMainRenderTarget().isStencilEnabled()
+                        ? IrisCompatibilityPortalRenderer.instance : IrisPortalRenderer.instance);
                     case compatibility -> switchRenderer(IrisCompatibilityPortalRenderer.instance);
                     case debug -> switchRenderer(IrisCompatibilityPortalRenderer.debugModeInstance);
                     case none -> switchRenderer(IPCGlobal.rendererDummy);

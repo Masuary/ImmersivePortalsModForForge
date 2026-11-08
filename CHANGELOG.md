@@ -2,7 +2,30 @@
 
 Unofficial fork of [Immersive Portals for Forge](https://github.com/iPortalTeam/ImmersivePortalsModForForge) (1.18
 branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible with Vault Hunters 3 (Remastered 3.0.1 and,
-since 1.4.20-vh3r.3, 3rd Edition 3.21.7). Changes below are relative to upstream 1.4.20.
+since 1.4.20-vh3r.3, 3rd Edition 3.21.7; Wold's Vaults 0.34.2 since 1.4.20-vh3r.4). Changes below are relative to
+upstream 1.4.20.
+
+## 1.4.20-vh3r.4
+
+vh3r.3 and vh3r.4 servers and players can join each other; update both for the fixes below.
+
+### Shaders
+
+- Fixed: with an Oculus shader pack on, the screen turned red as soon as a vault window (or any Immersive Portals
+  portal) was rendered. It happened after Vault Hunters or Immersive Engineering switched on the stencil buffer of the
+  game's main framebuffer (Vault Hunters does it for some of its screens, Immersive Engineering at startup), so Wold's
+  Vaults, which ships with shaders on, had it from the first frame. Portal buffers now follow the main framebuffer's
+  depth format, and in that case the shader-compatible portal renderer is used.
+
+### Wold's Vaults 0.34.2
+
+- Now also runs with the Wold's Vaults modpack.
+- A Corrupted vault breaks its start-room portal once a runner walks away from the start; the window over it now
+  goes away too, instead of showing the hub over an empty frame.
+- Corrupted and Hyper crystals keep Vault Hunters' own portal when the frame is lit (their vault logic starts as soon
+  as the vault exists), and get their windows once someone enters.
+- Floor frames from Better Vault Portals keep Vault Hunters' portal, like Remastered's floor frames, and frames built
+  from Wold's Vaults' extra frame blocks (slabs, bricks, ...) get windows like vault stone frames.
 
 ## 1.4.20-vh3r.3
 

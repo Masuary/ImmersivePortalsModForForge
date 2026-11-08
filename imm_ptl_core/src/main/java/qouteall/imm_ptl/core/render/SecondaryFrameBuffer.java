@@ -35,6 +35,13 @@ public class SecondaryFrameBuffer {
             fb.checkStatus();
             Helper.log("Secondary Framebuffer resized");
         }
+        // Forge's stencil (RenderTarget.enableStencil, turned on by Vault Hunters' and Immersive Engineering's GUIs)
+        // gives the main framebuffer a DEPTH32F_STENCIL8 depth, and depth blits from it only work into the same format
+        if (Minecraft.getInstance().getMainRenderTarget().isStencilEnabled() && !fb.isStencilEnabled()) {
+            fb.enableStencil();
+            fb.checkStatus();
+            Helper.log("Secondary Framebuffer follows the main framebuffer's Forge stencil");
+        }
     }
     
     
