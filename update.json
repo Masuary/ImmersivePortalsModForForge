@@ -1,10 +1,11 @@
 {
   "homepage": "https://www.curseforge.com/projects/1787636",
   "promos": {
-    "1.18.2-latest": "1.4.20-vh3r.7",
-    "1.18.2-recommended": "1.4.20-vh3r.7"
+    "1.18.2-latest": "1.4.20-vh3r.8",
+    "1.18.2-recommended": "1.4.20-vh3r.8"
   },
   "1.18.2": {
+    "1.4.20-vh3r.8": "Tells you in chat when a newer version is out (turn off with checkForUpdates).",
     "1.4.20-vh3r.7": "Fixed: the vault timer did not start until someone completed the vault (server fix).",
     "1.4.20-vh3r.6": "Vault windows can be switched off per frame (sneak and use glowstone dust); the world no longer disappears behind Vault Hunters' screens with shaders off.",
     "1.4.20-vh3r.5": "Clients at their frame rate limit get the full portal view (no flat sky-blue rectangle through vault windows).",
