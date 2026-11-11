@@ -5,6 +5,7 @@ import iskallia.vault.block.entity.VaultPortalTileEntity;
 import iskallia.vault.core.Version;
 import iskallia.vault.core.vault.Vault;
 import iskallia.vault.core.vault.VaultFactory;
+import iskallia.vault.core.vault.time.TickClock;
 import iskallia.vault.core.world.storage.VirtualWorld;
 import iskallia.vault.item.crystal.CrystalData;
 import iskallia.vault.world.data.ServerVaults;
@@ -105,9 +106,34 @@ public final class VaultPreviews {
      * runner has not arrived yet.
      */
     public static boolean isWaitingForRunners(Vault vault) {
+        return isPreview(vault) && vault.get(Vault.LISTENERS).getAll().isEmpty();
+    }
+
+    /**
+     * Whether Vault Hunters' objectives skip this tick of the vault. Vault Hunters never ticks the objectives of a vault
+     * without runners, and an objective that waits until every runner has completed counts an empty vault as completed:
+     * the crake pedestal then ticks its victory child, which pauses and hides the clock, and a hidden clock never
+     * starts. A vault previewed before this check kept such a hidden clock; it is shown again for its first runner.
+     */
+    public static boolean holdObjectivesBeforeTick(Vault vault) {
+        if (!isPreview(vault)) {
+            return false;
+        }
+        if (vault.get(Vault.LISTENERS).getAll().isEmpty()) {
+            return true;
+        }
+        vault.ifPresent(Vault.CLOCK, clock -> {
+            if (!clock.has(TickClock.VISIBLE)) {
+                clock.set(TickClock.VISIBLE);
+                LOGGER.info("Showed the clock of vault {} again for its first runner", vault.get(Vault.ID));
+            }
+        });
+        return false;
+    }
+
+    private static boolean isPreview(Vault vault) {
         // loads the saved previews on the first call: Vault Hunters ticks restored vaults from the first server tick
-        return getStorage(ServerLifecycleHooks.getCurrentServer()).previews.containsKey(vault.get(Vault.ID))
-            && vault.get(Vault.LISTENERS).getAll().isEmpty();
+        return getStorage(ServerLifecycleHooks.getCurrentServer()).previews.containsKey(vault.get(Vault.ID));
     }
 
     /**

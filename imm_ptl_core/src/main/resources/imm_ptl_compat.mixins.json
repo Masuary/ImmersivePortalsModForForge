@@ -25,6 +25,7 @@
     "MixinVaultClassicListenersLogic",
     "MixinVaultCrystalItem",
     "MixinVaultEntityState",
+    "MixinVaultObjectives",
     "MixinVaultPortalBlock",
     "MixinVaultSpiritEntity",
     "MixinVaultVirtualWorlds"
