@@ -5,6 +5,18 @@ branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible wit
 since 1.4.20-vh3r.3, 3rd Edition 3.21.7; Wold's Vaults 0.34.2 since 1.4.20-vh3r.4). Changes below are relative to
 upstream 1.4.20.
 
+## 1.4.20-vh3r.8
+
+The mod now tells you when a newer version is out. Nothing else changes; vh3r.7 and vh3r.8 servers and players can
+join each other.
+
+- Once per start it looks for a newer release (it reads a small file on GitHub). Players get one chat line when they
+  enter a world, once per game launch; on a dedicated server, operators get one when they join, about the server's
+  version. Hover over the line for what changed, click Download for the CurseForge page. The server log names it too.
+- The Vault Hunters packs switch Forge's own update check off, so it has its own: new config `checkForUpdates`
+  (default `true`) turns it off.
+- The Mods list now links to this mod's CurseForge page instead of the original Immersive Portals site.
+
 ## 1.4.20-vh3r.7
 
 A server fix; nothing changes on the client.
