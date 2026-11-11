@@ -5,6 +5,17 @@ branch, 1.4.20) by qouteall, maintained on Forge by Nick1st, made compatible wit
 since 1.4.20-vh3r.3, 3rd Edition 3.21.7; Wold's Vaults 0.34.2 since 1.4.20-vh3r.4). Changes below are relative to
 upstream 1.4.20.
 
+## 1.4.20-vh3r.7
+
+A server fix; nothing changes on the client.
+
+- Fixed: the vault timer did not start until someone completed the vault. A vault made when its frame is lit waits
+  for its first runner, and while it waited Vault Hunters' objectives counted the empty vault as completed and paused
+  and hid the timer for good. The objectives now wait for the first runner too, so the timer stays paused in the
+  start room and starts once a runner leaves it, as in Vault Hunters. A frame lit with an earlier version gets its
+  timer back when its first runner enters; vaults already being run with a frozen timer stay frozen until someone
+  completes them.
+
 ## 1.4.20-vh3r.6
 
 Vault windows can be switched off per frame, for builds that use Vault Hunters' own portal texture (a server change),
