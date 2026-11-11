@@ -1,0 +1,16 @@
+{
+  "homepage": "https://www.curseforge.com/projects/1787636",
+  "promos": {
+    "1.18.2-latest": "1.4.20-vh3r.7",
+    "1.18.2-recommended": "1.4.20-vh3r.7"
+  },
+  "1.18.2": {
+    "1.4.20-vh3r.7": "Fixed: the vault timer did not start until someone completed the vault (server fix).",
+    "1.4.20-vh3r.6": "Vault windows can be switched off per frame (sneak and use glowstone dust); the world no longer disappears behind Vault Hunters' screens with shaders off.",
+    "1.4.20-vh3r.5": "Clients at their frame rate limit get the full portal view (no flat sky-blue rectangle through vault windows).",
+    "1.4.20-vh3r.4": "Shaders: no red screen with vault windows. Now also runs with Wold's Vaults 0.34.2.",
+    "1.4.20-vh3r.3": "Now also runs with Vault Hunters 3rd Edition 3.21.7.",
+    "1.4.20-vh3r.2": "Vaults tick in parallel again, freeze fix, client memory fix.",
+    "1.4.20-vh3r.1": "First release: see-through vault portals for Vault Hunters 3 Remastered 3.0.1."
+  }
+}
