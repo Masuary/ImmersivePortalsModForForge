@@ -22,6 +22,7 @@ import qouteall.imm_ptl.core.compat.vault_hunters.VaultHuntersCompat;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultRules;
 import qouteall.imm_ptl.core.platform_specific.forge.networking.IPMessage;
 import qouteall.imm_ptl.core.portal.custom_portal_gen.CustomPortalGenManagement;
+import qouteall.imm_ptl.core.update.UpdateCheck;
 import qouteall.q_misc_util.Helper;
 
 import static qouteall.imm_ptl.core.platform_specific.IPModEntry.MODID;
@@ -44,6 +45,7 @@ public class IPModEntry {
         FMLJavaModLoadingContext.get().getModEventBus().register(IPRegistry.class);
 
         IPModMain.init();
+        UpdateCheck.init();
         RequiemCompat.init();
         SteamRailsCompat.init();
 

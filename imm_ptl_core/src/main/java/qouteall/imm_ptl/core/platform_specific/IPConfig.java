@@ -11,6 +11,7 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.compat.vault_hunters.PlainFrameRules;
 import qouteall.imm_ptl.core.compat.vault_hunters.VaultPreviewRules;
 import qouteall.imm_ptl.core.portal.PortalDimensionFilter;
+import qouteall.imm_ptl.core.update.UpdateCheck;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.dimension.DimensionMisc;
 
@@ -59,6 +60,7 @@ public class IPConfig {
     public static ForgeConfigSpec.EnumValue<VaultPreviewRules.Mode> vaultPreview;
     public static ForgeConfigSpec.IntValue vaultPreviewTimeoutMinutes;
     public static ForgeConfigSpec.ConfigValue<String> vaultWindowToggleItem;
+    public static ForgeConfigSpec.BooleanValue checkForUpdates;
 
     public static void register(ForgeConfigSpec.Builder builder) {
         builder.comment("Check the wiki at https://qouteall.fun/immptl/wiki/Config-Options for more information");
@@ -115,6 +117,9 @@ public class IPConfig {
         vaultWindowToggleItem = builder
             .comment("Vault Hunters: sneaking and using this item on a lit hub frame switches its vault window off (Vault Hunters' own portal for everyone) or back on; only a player who could break the frame may switch it, and the item is not used up. An item id (\"minecraft:glowstone_dust\"), an item tag (\"#forge:dusts/glowstone\") or empty to turn the switch off. A value naming no item is reset to the default with a warning. To turn vault windows off everywhere, add \"the_vault\" to portalDisabledDimensions")
             .define("vaultWindowToggleItem", PlainFrameRules.DEFAULT_TOGGLE_ITEM, IPConfig::isValidVaultWindowToggleItem);
+        checkForUpdates = builder
+            .comment("Look for a newer release of Immersive Portals for Vault Hunters once per start (reads a small file on GitHub). A newer release is written to the log; on a dedicated server operators get a chat line when they join, and players get one when they enter a world. Read at startup")
+            .define("checkForUpdates", true);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, builder.build());
     }
@@ -179,6 +184,7 @@ public class IPConfig {
         PortalDimensionFilter.configure(portalDisabledDimensions.get());
         VaultPreviewRules.configure(vaultPreview.get(), vaultPreviewTimeoutMinutes.get());
         PlainFrameRules.configure(vaultWindowToggleItem.get());
+        UpdateCheck.configure(checkForUpdates.get());
 
         Helper.log("IP Config Applied");
     }
